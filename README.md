@@ -6,9 +6,15 @@
 
 - `cargo build`
 
+### Running in cargo
+
+- `cargo run`
+
+### Running from .exe file
+
 - Copy `ROMs/` and `SDL2.dll` to the `target/debug/` folder
 
-- Run the executable file `/target/debug/chip_8.exe`
+- Run the executable file `/target/debug/chip8-emulator.exe`
 
 ## MacOS Setup
 
