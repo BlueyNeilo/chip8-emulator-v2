@@ -1,0 +1,8 @@
+[package]
+name = "chip_8"
+version = "0.1.0"
+authors = ["Patrick"]
+
+[dependencies]
+rand = "*"
+sdl2 = "*"
