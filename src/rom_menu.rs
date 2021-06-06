@@ -8,11 +8,9 @@ const MENU_COL_LEN: usize = 10;
 pub fn choose_rom() -> String {
     let roms_dir = Path::new("./ROMs/");
     let rom_name: String;
-    let file_names = get_rom_names(&roms_dir);
-    print_roms(&file_names);
+    print_roms(&get_rom_names(&roms_dir));
 
     'getrom: loop {
-        println!("\nPlease choose a ROM to play:");
         match get_valid_rom(&roms_dir) {
             Ok(good_name) => { rom_name = good_name; break 'getrom },
             Err(bad_name) => println!("Sorry the ROM '{}' does not exist.", bad_name)
@@ -49,6 +47,7 @@ fn print_roms(rom_names: &Vec<String>) {
 fn get_valid_rom(roms_dir: &Path) -> Result<String, String> {
     let mut rom_name = String::new();
 
+    println!("\nPlease choose a ROM to play:");
     stdin().read_line(&mut rom_name).expect("Failed to read line");
     rom_name = rom_name.trim_end_matches(char::is_control).to_string();
 
