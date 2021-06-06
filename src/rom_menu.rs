@@ -1,34 +1,60 @@
 use std::fs::read_dir;
 use std::path::Path;
-use std::io;
+use std::io::stdin;
+
+const MENU_ROWS: usize = 4;
+const MENU_COL_LEN: usize = 10;
 
 pub fn choose_rom() -> String {
-    let dir = Path::new("./ROMs/");
-    let mut rom = String::new();
+    let roms_dir = Path::new("./ROMs/");
+    let rom_name: String;
+    let file_names = get_rom_names(&roms_dir);
+    print_roms(&file_names);
+
+    'getrom: loop {
+        println!("\nPlease choose a ROM to play:");
+        match get_valid_rom(&roms_dir) {
+            Ok(good_name) => { rom_name = good_name; break 'getrom },
+            Err(bad_name) => println!("Sorry the ROM '{}' does not exist.", bad_name)
+        }
+    }
+
+    roms_dir.join(rom_name).as_path().to_str().unwrap().to_string()
+}
+
+fn get_rom_names(roms_dir: &Path) -> Vec<String> {
+    read_dir(&roms_dir).expect("ROM directory doesn't exist.")
+        .into_iter()
+        .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+        .collect::<Vec<String>>()
+}
+
+fn print_roms(rom_names: &Vec<String>) {
+    let mut rom_names_iter = rom_names.clone().into_iter().peekable();
+    let mut rom_names_grid: Vec<Vec<String>> = Vec::new();
+
+    while let Some(_) = (&mut rom_names_iter).peek() { 
+        rom_names_grid.push((&mut rom_names_iter)
+            .take(MENU_ROWS)
+            .map(|name| format!("{:padding$}", name, padding = MENU_COL_LEN))
+            .collect::<Vec<String>>()
+        ); 
+    };
+
     println!("\nAvailable ROMS:\n");
-    if dir.is_dir() {
-        for entry in read_dir(&dir).unwrap() {
-            println!("{}", entry.unwrap().path().file_name().unwrap().to_str().unwrap())
-        }
-        'getrom: loop {
-            println!("\nPlease chose a ROM to play:");
-            io::stdin().read_line(&mut rom)
-                .expect("Failed to read line");
-            let tlen: usize = rom.len()-2;
-            rom.truncate(tlen); //Remove '\n\r' at the end.
-            if dir.join(&rom).as_path().exists() {
-                break 'getrom
-            }
-            else
-            {
-                println!("Sorry that ROM does not exist.");
-                rom=String::new() //clear string for next read attempt
-            }
-        }
+    rom_names_grid.iter()
+        .for_each(|v| println!("{}", v.concat()))
+}
+
+fn get_valid_rom(roms_dir: &Path) -> Result<String, String> {
+    let mut rom_name = String::new();
+
+    stdin().read_line(&mut rom_name).expect("Failed to read line");
+    rom_name = rom_name.trim_end_matches(char::is_control).to_string();
+
+    if roms_dir.join(&rom_name).exists() {
+        Ok(rom_name)
+    } else {
+        Err(rom_name)
     }
-    else
-    {
-        panic!("ROM directory doesn't exist.")
-    }
-    dir.join(rom).as_path().to_str().unwrap().to_string()
 }
