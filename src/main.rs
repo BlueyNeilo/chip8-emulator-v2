@@ -140,7 +140,7 @@ fn setup_io() -> (WindowCanvas, EventPump, AudioDevice<SquareWave>) {
             SquareWave {
                 phase_inc: 261.63 / spec.freq as f32, //261.63Hz Middle C (440Hz A)
                 phase: 0.0,
-                volume: 0.15
+                volume: 0.02
             }
         }).unwrap();
     device.pause();
