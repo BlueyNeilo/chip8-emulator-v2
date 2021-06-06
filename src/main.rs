@@ -39,8 +39,7 @@ use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::video::{Window, WindowContext};
-use sdl2::render::{Canvas, WindowCanvas};
+use sdl2::render::{WindowCanvas};
 use sdl2::audio::{AudioDevice, AudioCallback, AudioSpecDesired, AudioStatus};
 //RNG for rand_byte() instruction
 extern crate rand;
@@ -50,14 +49,13 @@ use std::time::Duration;
 use std::thread::sleep;
 //ROM file access
 use std::fs::{File, read_dir};
-use std::ffi::OsStr;
 use std::path::Path;
-use std::io::{self, Read, Write, BufWriter};
+use std::io::{self, Read};
 
 //Pixel dimensions
 const W: usize = 64;
 const H: usize = 32;
-const pixel_size: u32 = 20;
+const PIXEL_SIZE: u32 = 20;
 
 fn chooseroms() -> String {
     let dir = Path::new("./ROMs/");
@@ -102,16 +100,13 @@ impl AudioCallback for SquareWave {
     fn callback(&mut self, out: &mut [f32]) {
         // Generate a square wave
         for x in out.iter_mut() {
-            *x = match self.phase {
-                0.0...0.5 => self.volume,
-                _ => -self.volume
-            };
+            *x = if self.phase < 0.5 { self.volume } else { -self.volume };
             self.phase = (self.phase + self.phase_inc) % 1.0;
         }
     }
 }
 
-fn setupIO() -> (WindowCanvas, EventPump, AudioDevice<SquareWave>) {
+fn setup_io() -> (WindowCanvas, EventPump, AudioDevice<SquareWave>) {
     //window size
     //display mode
     //audio settings
@@ -120,8 +115,8 @@ fn setupIO() -> (WindowCanvas, EventPump, AudioDevice<SquareWave>) {
     let video_subsystem = sdl_context.video().unwrap(); //VideoSubsystem type
     let window = video_subsystem
         .window("Chip8 Emulator",
-                pixel_size*(W as u32),
-                pixel_size*(H as u32))
+            PIXEL_SIZE*(W as u32),
+            PIXEL_SIZE*(H as u32))
         .position_centered()
         .build().unwrap(); //Window type
     let mut canvas = window.into_canvas()
@@ -132,7 +127,7 @@ fn setupIO() -> (WindowCanvas, EventPump, AudioDevice<SquareWave>) {
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
     canvas.present();
-    let mut event_pump = sdl_context.event_pump().unwrap(); //EventPump
+    let event_pump = sdl_context.event_pump().unwrap(); //EventPump
     //261.63Hz Middle C
     let audio_subsystem = sdl_context.audio().unwrap();
     let desired_spec = AudioSpecDesired {
@@ -153,28 +148,29 @@ fn setupIO() -> (WindowCanvas, EventPump, AudioDevice<SquareWave>) {
     (canvas, event_pump, device)
 }
 
-fn drawGraphics(pixels: &[bool; 0x800], canvas: &mut WindowCanvas) {
+fn draw_graphics(pixels: &[bool; 0x800], canvas: &mut WindowCanvas) {
     canvas.set_draw_color(Color::RGB(0,0,0)); //black
     canvas.clear();
     canvas.set_draw_color(Color::RGB(255,255,255)); //white
     for (i,v) in pixels.into_iter().enumerate() {
         if *v {
-            canvas.fill_rect(Rect::new(((i as i32)%(W as i32))*(pixel_size as i32), (i as i32)/(W as i32)*(pixel_size as i32), pixel_size, pixel_size)).unwrap()
+            canvas.fill_rect(Rect::new(((i as i32)%(W as i32))*(PIXEL_SIZE as i32), (i as i32)/(W as i32)*(PIXEL_SIZE as i32), PIXEL_SIZE, PIXEL_SIZE)).unwrap()
         }
     }
     canvas.present()
 }
 
-fn resetPixel(pixels: &mut [bool; 0x800], x: usize, y: usize, val: bool) {
+fn reset_pixel(pixels: &mut [bool; 0x800], x: usize, y: usize, val: bool) {
     pixels[y*W+x] = val
 }
 
-fn RNG_byte() -> u8 {
+fn rng_byte() -> u8 {
     rand::thread_rng().gen_range(0,256) as u8
 }
 
+#[allow(non_snake_case)]
 struct Chip8 {
-    drawFlag: bool,
+    draw_flag: bool,
     key_wait: bool, //set to true if the program is waiting for a key to be entered
     reg_wait: usize, //the index of the V register the waited key value will be stored in
     pc: u16, //Program counter
@@ -187,7 +183,7 @@ struct Chip8 {
 }
 impl Chip8 {
     fn new() -> Chip8 {
-        Chip8 {drawFlag: false,
+        Chip8 {draw_flag: false,
         key_wait: false,
         reg_wait: 0,
         pc: 0x200, //program starts at 0x200
@@ -199,9 +195,9 @@ impl Chip8 {
         sound_timer: 0}
     }
 
-    fn loadGame(&mut self, memory:  &mut [u8; 0x1000], gameName: String) {
+    fn load_game(&mut self, memory:  &mut [u8; 0x1000], game_name: String) {
         let mut rom_buf: Vec<u8> = Vec::new();
-        let mut file = File::open(&gameName).unwrap();
+        let mut file = File::open(&game_name).unwrap();
         file.read_to_end(&mut rom_buf).unwrap();
         let mut addr = 0x200;
         for byte in &rom_buf {
@@ -210,21 +206,21 @@ impl Chip8 {
         }
     }
 
-    fn updatePixel(&mut self, pixels: &mut [bool; 0x800], x: usize, y: usize, val: bool) {
+    fn update_pixel(&mut self, pixels: &mut [bool; 0x800], x: usize, y: usize, val: bool) {
         if pixels[y*W+x]==val {self.reg_v[0xF]=1};
         pixels[y*W+x] ^= val
     }
 
     //Clears the display. All pixels set to black (off)
-    fn clearDisplay(&mut self, pixels: &mut [bool; 0x800]) {
+    fn clear_display(&mut self, pixels: &mut [bool; 0x800]) {
         for y in 0..H {
             for x in 0..W {
-                resetPixel(pixels, x as usize, y as usize, false)
+                reset_pixel(pixels, x as usize, y as usize, false)
             }
         }
     }
 
-    fn disassembleCode(&mut self, memory: &[u8; 0x1000]) {
+    fn disassemble_code(&mut self, memory: &[u8; 0x1000]) {
         println!("Disassembling code: \n");
 
         //let mut dfilebuf = BufWriter::new(File::create("hex.txt").unwrap());
@@ -302,7 +298,7 @@ impl Chip8 {
         //dfilebuf.flush();
     }
 
-    fn emulateCycle(&mut self, memory: &mut [u8; 0x1000], pixels: &mut [bool; 0x800], key: &[bool; 0x10], device: &AudioDevice<SquareWave>) {
+    fn emulate_cycle(&mut self, memory: &mut [u8; 0x1000], pixels: &mut [bool; 0x800], key: &[bool; 0x10], device: &AudioDevice<SquareWave>) {
         //Fetch Opcode
         let opcode: u16 = (memory[self.pc as usize] as u16) << 8 | (memory[(self.pc as usize) + 1] as u16);
         self.pc += 2;
@@ -314,10 +310,11 @@ impl Chip8 {
         let n = opcode & 0xF; //4 bit constant (last nibble)
         let x: usize = (nnn as usize) >> 8; //the second nibble in the instruction (when applicable)
         let y: usize = (nn as usize) >> 4; // the third nibble in the instruction (when applicable)
+        #[allow(non_snake_case)]
         let I: usize = self.I as usize;
         //Execute Opcode
         match opcode {
-            0x00E0 => {self.clearDisplay(pixels); self.drawFlag = true}, //CLS; clears the display
+            0x00E0 => {self.clear_display(pixels); self.draw_flag = true}, //CLS; clears the display
             0x00EE => {self.pc = self.stack[self.sp as usize]; self.sp-=1}, //RET; return from a subroutine
             _ => match u {
                 //0x0 => {}, //SYS addr; 0NNN, Calls RCA 1802 program at address NNN. not used for this emulator
@@ -345,7 +342,7 @@ impl Chip8 {
                 0x9 => {if self.reg_v[x]!=self.reg_v[y] {self.pc+=2}}, //SNE Vx, Vy; 9XY0, skip if Vx!=Vy
                 0xA => {self.I=nnn}, //LD I, addr; ANNN, I=NNN
                 0xB => {self.pc=(self.reg_v[0] as u16)+nnn}, //JP V0, addr; BNNN, PC = V0 + NNN (Error handling could be added)
-                0xC => {self.reg_v[x]=RNG_byte()&nn}, //RND Vx, byte; CXNN, Vx = rand() & NN
+                0xC => {self.reg_v[x]=rng_byte()&nn}, //RND Vx, byte; CXNN, Vx = rand() & NN
                 0xD => {
                     /*The interpreter reads n bytes from memory, starting at the address stored in I.
                     These bytes are then displayed as sprites on screen at coordinates (Vx, Vy).
@@ -360,13 +357,13 @@ impl Chip8 {
                         while py>=H {py-=H};
                         for ii in 0..8 {
                             while px>=W {px-=W};
-                            self.updatePixel(pixels, px, py, (((memory[I+(i as usize)]>>(7-ii))&1)==1) as bool);
+                            self.update_pixel(pixels, px, py, (((memory[I+(i as usize)]>>(7-ii))&1)==1) as bool);
                             px+=1
                         };
                         px=self.reg_v[x] as usize;
                         py+=1
                     };
-                    self.drawFlag = true
+                    self.draw_flag = true
                 }, //DRW Vx, Vy, nibble; DXYN, Display n-byte sprite starting at memory location I at (Vx, Vy)
                 0xE => match nn {
                     0x9E => {if key[(self.reg_v[x]&0xF) as usize] {self.pc+=2}}, //SKP Vx; EX9E, Skip next instruction if key with the value of Vx is pressed.
@@ -422,7 +419,7 @@ impl Chip8 {
     }
 }
 
-fn initMemory(memory: &mut [u8; 0x1000], kvals: &mut [Keycode; 0x10]) {
+fn init_memory(memory: &mut [u8; 0x1000], kvals: &mut [Keycode; 0x10]) {
     let font: [u8; 16*5] = [0xF0,0x90,0x90,0x90,0xF0, //0
     0x20,0x60,0x20,0x20,0x70, //1
     0xF0,0x10,0xF0,0x80,0xF0, //2
@@ -468,12 +465,12 @@ fn main() {
     let mut pixels: [bool; 0x800] = [false; 0x800]; //64x32 pixels
     let mut key: [bool; 0x10] = [false; 0x10]; //0x0-0xF
     let mut kvals: [Keycode; 0x10] = [Keycode::A; 0x10]; //Keyboard input configuration
-    initMemory(&mut memory, &mut kvals);
+    init_memory(&mut memory, &mut kvals);
     let kvals = kvals; //remove mutablity
-    let (mut canvas, mut event_pump, device) = setupIO();
+    let (mut canvas, mut event_pump, device) = setup_io();
     let mut chip8 = Chip8::new();
-    chip8.loadGame(&mut memory, rom);
-    chip8.disassembleCode(&memory);
+    chip8.load_game(&mut memory, rom);
+    chip8.disassemble_code(&memory);
 
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -482,7 +479,7 @@ fn main() {
                     break 'running
                 },
                 Event::KeyDown { keycode: Some(k), repeat: false, .. } => {
-                    for (i, kd) in kvals.into_iter().enumerate() {
+                    for (i, kd) in kvals.iter().enumerate() {
                         if k==*kd {
                             key[i as usize] = true;
                             if chip8.key_wait {
@@ -494,7 +491,7 @@ fn main() {
                     }
                 },
                 Event::KeyUp { keycode: Some(k), repeat: false, .. } => {
-                    for (i, kd) in kvals.into_iter().enumerate() {
+                    for (i, kd) in kvals.iter().enumerate() {
                         if k==*kd {
                             key[i as usize] = false;
                             //println!("Key 0x{:X} up",i)
@@ -507,11 +504,11 @@ fn main() {
 
         sleep(Duration::new(0, 1666667)); //16666667ns period for a 60Hz cycle
         if !chip8.key_wait {
-            chip8.emulateCycle(&mut memory, &mut pixels, &key, &device)
+            chip8.emulate_cycle(&mut memory, &mut pixels, &key, &device)
         };
-        if chip8.drawFlag {
-            drawGraphics(&pixels, &mut canvas);
-            chip8.drawFlag = false
+        if chip8.draw_flag {
+            draw_graphics(&pixels, &mut canvas);
+            chip8.draw_flag = false
         }
     }
 }
