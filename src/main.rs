@@ -1,8 +1,5 @@
 /*
 Chip8 Emulator in Rust - Patrick Neilson 2018
-
-//http://www.multigesture.net/articles/how-to-write-an-emulator-chip-8-interpreter/
-//http://devernay.free.fr/hacks/chip8/C8TECH10.HTM
 */
 /*
 Memory map:
@@ -22,14 +19,6 @@ Graphics
 monochrome colour
 graphics are drawn only with sprites
 (sprites are 8 pixels wide, may be from 1 to 15 pixels in height)
-*/
-/*
-drawFlag
-Because the system does not draw every cycle,
-we should set a draw flag when we need to update our screen.
-Only two opcodes should set this flag:
-    0x00E0 – Clears the screen
-    0xDXYN – Draws a sprite on the screen
 */
 
 //SDL
@@ -170,7 +159,7 @@ fn rng_byte() -> u8 {
 
 #[allow(non_snake_case)]
 struct Chip8 {
-    draw_flag: bool,
+    draw_flag: bool, //Only draw if screen changes: 0x00E0 – Clear screen, 0xDXYN – Draw sprite
     key_wait: bool, //set to true if the program is waiting for a key to be entered
     reg_wait: usize, //the index of the V register the waited key value will be stored in
     pc: u16, //Program counter
@@ -512,8 +501,3 @@ fn main() {
         }
     }
 }
-
-/*
-PONG:
-6A 02 6B 0C 6C 3F 6D 0C C2 A2 C3 AA C3 9A C2 B6 C3 9C C3 96 6E 20 22 C3 94 66 03 68 02 60 60 C3 B0 15 C3 B0 07 30 20 12 1A C3 87 17 77 08 69 C3 BF C2 A2 C3 B0 C3 96 71 C2 A2 C3 AA C3 9A C2 B6 C3 9C C3 96 60 01 C3 A0 C2 A1 7B C3 BE 60 04 C3 A0 C2 A1 7B 02 60 1F E2 80 B9 02 C3 9A C2 B6 60 0C C3 A0 C2 A1 7D C3 BE 60 0A C3 A0 C2 A1 7D 02 60 1F C2 8D 02 C3 9C C3 96 C2 A2 C3 B0 C3 96 71 E2 80 A0 E2 80 9E E2 80 A1 E2 80 9D 60 3F E2 80 A0 02 61 1F E2 80 A1 12 46 02 12 78 46 3F 12 E2 80 9A 47 1F 69 C3 BF 47 20 69 01 C3 96 71 12 2A 68 02 63 01 E2 82 AC 70 E2 82 AC C2 B5 12 C5 A0 68 C3 BE 63 0A E2 82 AC 70 E2 82 AC C3 95 3F 01 12 C2 A2 61 02 E2 82 AC 15 3F 01 12 C2 BA E2 82 AC 15 3F 01 12 C3 88 E2 82 AC 15 3F 01 12 C3 82 60 20 C3 B0 18 22 C3 94 C5 BD 34 22 C3 94 66 3E 33 01 66 03 68 C3 BE 33 01 68 02 12 16 79 C3 BF 49 C3 BE 69 C3 BF 12 C3 88 79 01 49 02 69 01 60 04 C3 B0 18 76 01 46 40 76 C3 BE 12 6C C2 A2 C3 B2 C3 BE 33 C3 B2 65 C3 B1 29 64 14 65 20 C3 94 55 74 15 C3 B2 29 C3 94 55 20 C3 AE E2 82 AC E2 82 AC E2 82 AC E2 82 AC E2 82 AC E2 82 AC E2 82 AC 20 20 20 20 20
-*/
