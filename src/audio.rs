@@ -1,4 +1,4 @@
-use sdl2::audio::{AudioDevice, AudioSpecDesired, AudioCallback};
+use sdl2::audio::{AudioDevice, AudioSpecDesired, AudioSpec, AudioCallback};
 use sdl2::Sdl;
 
 const DSP_FREQ: i32 = 44100;
@@ -6,7 +6,7 @@ const MIDDLE_C_FREQ: f32 = 261.63;
 const VOLUME: f32 = 0.02;
 const MONO_CHANNEL: u8 = 1;
 
-struct SquareWave {
+pub struct SquareWave {
     phase_inc: f32,
     phase: f32,
     volume: f32
@@ -24,7 +24,17 @@ impl AudioCallback for SquareWave {
     }
 }
 
-pub fn setup_audio(sdl_context: &Sdl) -> AudioDevice<impl AudioCallback> {
+pub fn setup_square_audio(sdl_context: &Sdl) -> AudioDevice<SquareWave> {
+    setup_audio(sdl_context, 
+        |spec| SquareWave {
+            phase_inc: MIDDLE_C_FREQ / spec.freq as f32,
+            phase: 0.0,
+            volume: VOLUME
+        }
+    )
+}
+
+fn setup_audio<T: AudioCallback, F: FnOnce(AudioSpec) -> T>(sdl_context: &Sdl, callback: F) -> AudioDevice<T> {
     let audio_subsystem = sdl_context.audio().unwrap();
     let desired_spec = AudioSpecDesired {
         freq: Some(DSP_FREQ),
@@ -32,14 +42,9 @@ pub fn setup_audio(sdl_context: &Sdl) -> AudioDevice<impl AudioCallback> {
         samples: None
     };
     
-    let audio_device = audio_subsystem.open_playback(None, &desired_spec,
-        |spec| {
-            SquareWave {
-                phase_inc: MIDDLE_C_FREQ / spec.freq as f32,
-                phase: 0.0,
-                volume: VOLUME
-            }
-        }
+    let audio_device = audio_subsystem.open_playback(None, 
+        &desired_spec,
+        callback
     ).unwrap();
     audio_device.pause();
 
