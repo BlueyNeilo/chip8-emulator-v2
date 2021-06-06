@@ -23,7 +23,7 @@ use sdl2::pixels::Color;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::render::{WindowCanvas};
-use sdl2::audio::{AudioDevice, AudioCallback, AudioSpecDesired, AudioStatus};
+use sdl2::audio::{AudioDevice, AudioStatus, AudioCallback};
 //RNG for rand_byte() instruction
 extern crate rand;
 use rand::Rng;
@@ -46,25 +46,10 @@ use memory::init_memory;
 mod rom_menu;
 use rom_menu::choose_rom;
 
-//Borrowed from API reference http://angrylawyer.github.io/rust-sdl2/sdl2/audio/index.html
-struct SquareWave {
-    phase_inc: f32,
-    phase: f32,
-    volume: f32
-}
-impl AudioCallback for SquareWave {
-    type Channel = f32;
+mod audio;
+use audio::setup_audio;
 
-    fn callback(&mut self, out: &mut [f32]) {
-        // Generate a square wave
-        for x in out.iter_mut() {
-            *x = if self.phase < 0.5 { self.volume } else { -self.volume };
-            self.phase = (self.phase + self.phase_inc) % 1.0;
-        }
-    }
-}
-
-fn setup_io() -> (WindowCanvas, EventPump, AudioDevice<SquareWave>) {
+fn setup_io() -> (WindowCanvas, EventPump, AudioDevice<impl AudioCallback>) {
     //window size
     //display mode
     //audio settings
@@ -86,24 +71,9 @@ fn setup_io() -> (WindowCanvas, EventPump, AudioDevice<SquareWave>) {
     canvas.clear();
     canvas.present();
     let event_pump = sdl_context.event_pump().unwrap(); //EventPump
-    //261.63Hz Middle C
-    let audio_subsystem = sdl_context.audio().unwrap();
-    let desired_spec = AudioSpecDesired {
-        freq: Some(44100),
-        channels: Some(1),  // mono
-        samples: None       // default sample size
-    };
-    let device = audio_subsystem.open_playback(None, &desired_spec,
-        |spec| {
-            SquareWave {
-                phase_inc: 261.63 / spec.freq as f32, //261.63Hz Middle C (440Hz A)
-                phase: 0.0,
-                volume: 0.02
-            }
-        }).unwrap();
-    device.pause();
+    let audio_device = setup_audio(&sdl_context);
 
-    (canvas, event_pump, device)
+    (canvas, event_pump, audio_device)
 }
 
 fn draw_graphics(pixels: &[bool; 0x800], canvas: &mut WindowCanvas) {
@@ -256,7 +226,7 @@ impl Chip8 {
         //dfilebuf.flush();
     }
 
-    fn emulate_cycle(&mut self, memory: &mut [u8; 0x1000], pixels: &mut [bool; 0x800], key: &[bool; 0x10], device: &AudioDevice<SquareWave>) {
+    fn emulate_cycle(&mut self, memory: &mut [u8; 0x1000], pixels: &mut [bool; 0x800], key: &[bool; 0x10], device: &AudioDevice<impl AudioCallback>) {
         //Fetch Opcode
         let opcode: u16 = (memory[self.pc as usize] as u16) << 8 | (memory[(self.pc as usize) + 1] as u16);
         self.pc += 2;
