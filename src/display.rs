@@ -13,7 +13,7 @@ pub fn setup_display(sdl_context: &Sdl) -> WindowCanvas {
             PIXEL_SIZE*(W as u32),
             PIXEL_SIZE*(H as u32))
         .position_centered()
-        .build().unwrap(); //Window type
+        .build().unwrap();
     
     let mut canvas = window.into_canvas()
         .target_texture()
@@ -31,9 +31,16 @@ pub fn draw_graphics(pixels: &[bool; 0x800], canvas: &mut WindowCanvas) {
     canvas.set_draw_color(Color::RGB(0,0,0)); //black
     canvas.clear();
     canvas.set_draw_color(Color::RGB(255,255,255)); //white
+    const WIDTH: i32 = W as i32;
     for (i,v) in pixels.into_iter().enumerate() {
         if *v {
-            canvas.fill_rect(Rect::new(((i as i32)%(W as i32))*(PIXEL_SIZE as i32), (i as i32)/(W as i32)*(PIXEL_SIZE as i32), PIXEL_SIZE, PIXEL_SIZE)).unwrap()
+            let i = i as i32;
+            canvas.fill_rect(Rect::new(
+                (i % WIDTH)*(PIXEL_SIZE as i32), 
+                (i / WIDTH)*(PIXEL_SIZE as i32), 
+                PIXEL_SIZE, 
+                PIXEL_SIZE)
+            ).unwrap()
         }
     }
 
