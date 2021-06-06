@@ -25,7 +25,7 @@ pub struct Chip8 {
 }
 
 impl Chip8 {
-    pub fn new() -> Chip8 {
+    pub fn new() -> Self {
         Chip8 {
             draw_flag: false,
             key_wait: false,
