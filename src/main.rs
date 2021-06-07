@@ -48,6 +48,8 @@ use constants::N;
 
 mod rng;
 
+mod opcode;
+
 fn main() {
     let rom = choose_rom(); //String::from("./ROMs/PONG"); //let rom: String = "./pong.bin".to_string();
     let io = IO::new();
