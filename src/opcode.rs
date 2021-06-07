@@ -1,7 +1,7 @@
 use std::fmt::{self, Debug, Display, Formatter};
 use self::{OpcodeType::*, Operation::*};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum Operation {
     SYS,
     CLS,
@@ -27,7 +27,7 @@ pub enum Operation {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum OpcodeType {
     NONE,               // **** -> exact match
     NNN(u16),           // *NNN -> address nnn
@@ -74,13 +74,13 @@ impl Display for OpcodeType {
     }
 }
 
-trait Disassembler {
+pub trait Disassembler {
     type Instruction;
     type Opcode;
     fn disassemble(Self::Instruction) -> Opcode;
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Opcode(pub Operation, pub OpcodeType);
 
 impl Display for Opcode {
@@ -90,7 +90,7 @@ impl Display for Opcode {
     }
 }
 
-struct OpcodeDisassembler;
+pub struct OpcodeDisassembler;
 
 impl Disassembler for OpcodeDisassembler {
     type Instruction = u16;
