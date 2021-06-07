@@ -18,7 +18,8 @@ pub struct Chip8 {
     stack: [u16; 0x10], //The stack for return calls
     pub reg_v: [u8; 0x10], //16 general purpose registers V0..V15. V15 (VF) is used for the carry flag
     delay_timer: u8, //counts down to 0 (60Hz)
-    sound_timer: u8 //counts down to 0 (60Hz). system's buzzer sounds whenever the timer reaches 0.
+    sound_timer: u8, //counts down to 0 (60Hz). system's buzzer sounds whenever the timer reaches 0.
+    pub clear_display_flag: bool
 }
 
 impl Chip8 {
@@ -33,7 +34,8 @@ impl Chip8 {
             stack: [0; 0x10],
             reg_v: [0; 0x10],
             delay_timer: 0,
-            sound_timer: 0
+            sound_timer: 0,
+            clear_display_flag: false
         }
     }
 
@@ -50,16 +52,14 @@ impl Chip8 {
 
     fn update_pixel(&mut self, pixels: &mut [bool; N], x: usize, y: usize, val: bool) {
         if pixels[y*W+x]==val {self.reg_v[0xF]=1};
-        pixels[y*W+x] ^= val
+        pixels[y*W+x] ^= val;
+        self.draw_flag = true
     }
 
     //Clears the display. All pixels set to black (off)
-    fn clear_display(&mut self, pixels: &mut [bool; 0x800]) {
-        for y in 0..H {
-            for x in 0..W {
-                reset_pixel(pixels, x as usize, y as usize, false)
-            }
-        }
+    fn clear_display(&mut self) {
+        self.clear_display_flag = true; 
+        self.draw_flag = true
     }
 
     pub fn disassemble_code(&mut self, memory: &[u8; 0x1000]) {
@@ -156,7 +156,7 @@ impl Chip8 {
         let I: usize = self.I as usize;
         //Execute Opcode
         match opcode {
-            0x00E0 => {self.clear_display(pixels); self.draw_flag = true}, //CLS; clears the display
+            0x00E0 => {self.clear_display()}, //CLS; clears the display
             0x00EE => {self.pc = self.stack[self.sp as usize]; self.sp-=1}, //RET; return from a subroutine
             _ => match u {
                 //0x0 => {}, //SYS addr; 0NNN, Calls RCA 1802 program at address NNN. not used for this emulator
@@ -205,7 +205,6 @@ impl Chip8 {
                         px=self.reg_v[x] as usize;
                         py+=1
                     };
-                    self.draw_flag = true
                 }, //DRW Vx, Vy, nibble; DXYN, Display n-byte sprite starting at memory location I at (Vx, Vy)
                 0xE => match nn {
                     0x9E => {if key[(self.reg_v[x]&0xF) as usize] {self.pc+=2}}, //SKP Vx; EX9E, Skip next instruction if key with the value of Vx is pressed.
@@ -259,10 +258,6 @@ impl Chip8 {
             }
         }
     }
-}
-
-fn reset_pixel(pixels: &mut [bool; 0x800], x: usize, y: usize, val: bool) {
-    pixels[y*W+x] = val
 }
 
 fn rng_byte() -> u8 {

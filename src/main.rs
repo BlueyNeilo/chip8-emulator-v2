@@ -24,6 +24,8 @@ use sdl2::keyboard::Keycode;
 //RNG
 extern crate rand;
 
+use std::convert::TryInto;
+
 //Use internal modules
 mod memory;
 use memory::init_memory;
@@ -34,7 +36,6 @@ use rom_menu::choose_rom;
 mod audio;
 
 mod display;
-use display::draw_graphics;
 
 mod chip8;
 use chip8::Chip8;
@@ -42,16 +43,18 @@ use chip8::Chip8;
 mod io;
 use io::IO;
 
+mod constants;
+use constants::N;
+
 fn main() {
     let rom = choose_rom(); //String::from("./ROMs/PONG"); //let rom: String = "./pong.bin".to_string();
     let io = IO::new();
     let mut memory: [u8; 0x1000] = [0; 0x1000]; //4kB program ROM and work RAM
-    let mut pixels: [bool; 0x800] = [false; 0x800]; //64x32 pixels
     let mut key: [bool; 0x10] = [false; 0x10]; //0x0-0xF
     let mut kvals: [Keycode; 0x10] = [Keycode::A; 0x10]; //Keyboard input configuration
     init_memory(&mut memory, &mut kvals);
     let kvals = kvals; //remove mutablity
-    let (mut canvas, mut event_pump, device) = (io.canvas, io.event_pump, io.audio_device);
+    let (mut display, mut event_pump, device) = (io.display, io.event_pump, io.audio_device);
     let mut chip8 = Chip8::new();
     chip8.load_game(&mut memory, rom);
     chip8.disassemble_code(&memory);
@@ -89,11 +92,18 @@ fn main() {
         IO::sleep_frame();
 
         if !chip8.key_wait {
-            chip8.emulate_cycle(&mut memory, &mut pixels, &key, &device)
+            let mut pixels: [bool; N] = (*display).get_pixels().as_slice().try_into().unwrap();
+            chip8.emulate_cycle(&mut memory, &mut pixels, &key, &device);
+            (*display).update_pixels(&pixels);
         };
+
         if chip8.draw_flag {
-            draw_graphics(&pixels, &mut canvas);
-            chip8.draw_flag = false
+            (*display).draw_pixels();
+            chip8.draw_flag = false;
+            if chip8.clear_display_flag {
+                (*display).reset_screen();
+                chip8.clear_display_flag = false
+            }
         }
     }
 }
