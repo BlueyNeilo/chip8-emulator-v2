@@ -50,6 +50,9 @@ mod rng;
 
 mod opcode;
 
+#[cfg(test)]
+mod tests;
+
 fn main() {
     let rom = choose_rom(); //String::from("./ROMs/PONG"); //let rom: String = "./pong.bin".to_string();
     let io = IO::new();
