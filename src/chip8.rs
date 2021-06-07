@@ -3,8 +3,7 @@ use std::fs::File;
 use std::io::Read;
 use sdl2::audio::{AudioDevice, AudioStatus, AudioCallback};
 
-//RNG for rand_byte() instruction
-use rand::Rng;
+use rng::rng_byte;
 use constants::{W, H, N};
 
 #[allow(non_snake_case)]
@@ -258,8 +257,4 @@ impl Chip8 {
             }
         }
     }
-}
-
-fn rng_byte() -> u8 {
-    rand::thread_rng().gen_range(0,256) as u8
 }
