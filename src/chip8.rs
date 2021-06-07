@@ -5,10 +5,7 @@ use sdl2::audio::{AudioDevice, AudioStatus, AudioCallback};
 
 //RNG for rand_byte() instruction
 use rand::Rng;
-
-pub const W: usize = 64;
-pub const H: usize = 32;
-pub const PIXEL_SIZE: u32 = 20;
+use constants::{W, H, N};
 
 #[allow(non_snake_case)]
 pub struct Chip8 {
@@ -51,7 +48,7 @@ impl Chip8 {
         }
     }
 
-    fn update_pixel(&mut self, pixels: &mut [bool; 0x800], x: usize, y: usize, val: bool) {
+    fn update_pixel(&mut self, pixels: &mut [bool; N], x: usize, y: usize, val: bool) {
         if pixels[y*W+x]==val {self.reg_v[0xF]=1};
         pixels[y*W+x] ^= val
     }
@@ -143,7 +140,7 @@ impl Chip8 {
         //dfilebuf.flush();
     }
 
-    pub fn emulate_cycle(&mut self, memory: &mut [u8; 0x1000], pixels: &mut [bool; 0x800], key: &[bool; 0x10], device: &AudioDevice<impl AudioCallback>) {
+    pub fn emulate_cycle(&mut self, memory: &mut [u8; 0x1000], pixels: &mut [bool; N], key: &[bool; 0x10], device: &AudioDevice<impl AudioCallback>) {
         //Fetch Opcode
         let opcode: u16 = (memory[self.pc as usize] as u16) << 8 | (memory[(self.pc as usize) + 1] as u16);
         self.pc += 2;
