@@ -1,4 +1,30 @@
 use std::fmt::{self, Debug, Display, Formatter};
+use self::{OpcodeType::*, Operation::*};
+
+#[derive(Debug)]
+pub enum Operation {
+    SYS,
+    CLS,
+    RET,
+    JP,
+    CALL,
+    SE,
+    SNE,
+    LD,
+    ADD,
+    OR,
+    AND,
+    XOR,
+    SUB,
+    SHR,
+    SUBN,
+    SHL,
+    RND,
+    DRW,
+    SKP,
+    SKNP,
+    UNDEFINED
+}
 
 #[allow(non_camel_case_types)]
 #[derive(Debug)]
@@ -48,39 +74,20 @@ impl Display for OpcodeType {
     }
 }
 
-use self::OpcodeType::*;
-
-pub struct Opcode(pub Operation, pub OpcodeType);
-
-pub enum Operation {
-    SYS,
-    CLS,
-    RET,
-    JP,
-    CALL,
-    SE,
-    SNE,
-    LD,
-    ADD,
-    OR,
-    AND,
-    XOR,
-    SUB,
-    SHR,
-    SUBN,
-    SHL,
-    RND,
-    DRW,
-    SKP,
-    SKNP,
-    UNDEFINED
-}
-use self::Operation::*;
-
 trait Disassembler {
     type Instruction;
     type Opcode;
     fn disassemble(Self::Instruction) -> Opcode;
+}
+
+#[derive(Debug)]
+pub struct Opcode(pub Operation, pub OpcodeType);
+
+impl Display for Opcode {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        let result: String = format!("{:?} {}", self.0, self.1);
+        write!(f, "{}", result.trim())
+    }
 }
 
 struct OpcodeDisassembler;
