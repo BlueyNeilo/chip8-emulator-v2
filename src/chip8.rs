@@ -5,7 +5,7 @@ use sdl2::audio::{AudioDevice, AudioStatus, AudioCallback};
 
 use rng::rng_byte;
 use constants::{W, H, N};
-use opcode::{Opcode, Operation::*, OpcodeType::*, OpcodeDisassembler};
+use opcode::{Opcode, Operation::*, OpcodeType::{self,*}, OpcodeDisassembler};
 
 #[allow(non_snake_case)]
 pub struct Chip8 {
@@ -56,12 +56,6 @@ impl Chip8 {
         self.draw_flag = true
     }
 
-    //Clears the display. All pixels set to black (off)
-    fn clear_display(&mut self) {
-        self.clear_display_flag = true; 
-        self.draw_flag = true
-    }
-
     pub fn disassemble_code(&mut self, memory: &[u8; 0x1000]) {
         println!("Disassembling code: \n");
 
@@ -87,17 +81,97 @@ impl Chip8 {
 
         //Decode Opcode
         let opcode: Opcode = OpcodeDisassembler::disassemble(instruction);
-        let u = instruction >> 12; //the first nibble in the instruction
-        let nnn = instruction & 0xFFF; //address
-        let nn: u8 = (instruction & 0xFF) as u8; //8 bit constant (byte)
-        let n = instruction & 0xF; //4 bit constant (last nibble)
-        let x: usize = (nnn as usize) >> 8; //the second nibble in the instruction (when applicable)
-        let y: usize = (nn as usize) >> 4; // the third nibble in the instruction (when applicable)
+        let u = instruction >> 12;
+        let nnn = instruction & 0xFFF;
+        let nn: u8 = (instruction & 0xFF) as u8;
+        let n = instruction & 0xF;
+        let x: usize = (nnn as usize) >> 8;
+        let y: usize = (nn as usize) >> 4;
         #[allow(non_snake_case)]
         let I: usize = self.I as usize;
 
         match opcode {
             Opcode(CLS, NONE) => self.clear_display(),
+            Opcode(RET, NONE) => self.subroutine_return(),
+            Opcode(JP, NNN(nnn)) => self.jump(nnn),
+            Opcode(JP, V0_NNN(nnn)) => self.jump(self.V[0] as u16 + nnn),
+            Opcode(CALL, NNN(nnn)) => self.subroutine_call(nnn),
+            Opcode(SE, op_type) => self.skip_equal(op_type),
+            Opcode(SNE, op_type) => self.skip_not_equal(op_type),
+            Opcode(LD, XNN(x, nn)) => self.V[x as usize] = (nn & 0xFF) as u8,
+            Opcode(LD, XY(x, y)) => self.V[x as usize] = self.V[y as usize],
+            Opcode(LD, I_NNN(nnn)) => self.I = nnn,
+            Opcode(LD, X_DT(x)) => self.V[x as usize] = self.delay_timer,
+            Opcode(LD, X_K(x)) => { 
+                self.key_wait = true; 
+                self.reg_wait = (x & 0xF) as usize 
+            },
+            Opcode(LD, DT_X(x)) => self.delay_timer = self.V[x as usize],
+            Opcode(LD, ST_X(x)) => self.sound_timer = self.V[x as usize],
+            Opcode(LD, F_X(x)) => {
+                self.I = (0x50 + (0x5 * self.V[x as usize])) as u16
+            },
+            Opcode(LD, B_X(x)) => { 
+                memory[I] = self.V[x as usize]/100;
+                memory[I+1] = (self.V[x as usize]/10)%10;
+                memory[I+2] = self.V[x as usize]%10
+            },
+            Opcode(LD, RI_X(x)) => (0..x+1).for_each(|i| 
+                memory[(self.I + i) as usize] = self.V[i as usize]),
+            Opcode(LD, X_RI(x)) => (0..x+1).for_each(|i| 
+                self.V[i as usize] = memory[(self.I + i) as usize]),
+            Opcode(ADD, XNN(x, nn)) => {
+                //self.V[0xF] = ((((self.V[x as usize] as u16) + nn) & 0xFF) >> 8) as u8; 
+                self.V[x as usize] = (((self.V[x as usize] as u16) + nn) & 0xFF) as u8
+            },
+            Opcode(ADD, I_X(x)) => {
+                //self.V[0xF] = ((self.I + (self.V[x as usize] as u16)) >> 12) as u8; 
+                self.I += self.V[x as usize] as u16;
+                self.I &= 0xFFF
+            },
+            Opcode(ADD, XY(x, y)) => {
+                self.V[0xF] = (((self.V[x as usize] as u16) + (self.V[y as usize] as u16)) >> 8) as u8; 
+                self.V[x as usize] = (((self.V[x as usize] as u16)+(self.V[y as usize] as u16)) & 0xFF) as u8
+            },
+            Opcode(OR, XY(x, y)) => self.V[x as usize] |= self.V[y as usize],
+            Opcode(AND, XY(x, y)) => self.V[x as usize] &= self.V[y as usize],
+            Opcode(XOR, XY(x, y)) => self.V[x as usize] ^= self.V[y as usize],
+            Opcode(SUB, XY(x, y)) => {
+                self.V[0xF] = (self.V[x as usize] > self.V[y as usize]) as u8; 
+                self.V[x as usize] = ((self.V[x as usize] as i16) - (self.V[y as usize] as i16)) as u8
+            },
+            Opcode(SUBN, XY(x, y)) => {
+                self.V[0xF] = (self.V[y as usize] > self.V[x as usize]) as u8; 
+                self.V[x as usize] = ((self.V[y as usize] as i16) - (self.V[x as usize] as i16)) as u8
+            },
+            Opcode(SHR, X(x)) => {
+                self.V[0xF] = self.V[x as usize] & 0x1;
+                self.V[x as usize] >>= 1
+            },
+            Opcode(SHL, X(x)) => {
+                self.V[0xF] = self.V[x as usize] >> 7;
+                self.V[x as usize] <<= 1
+            },
+            Opcode(RND, XNN(x, nn)) => self.V[x as usize] = rng_byte() & nn as u8,
+            Opcode(DRW, XYN(x, y, n)) => {
+                self.V[0xF] = 0;
+                let mut py: usize = self.V[y as usize] as usize;
+                for i in 0..n {
+                    while py >= H {py -= H};
+                    let mut px: usize = self.V[x as usize] as usize;
+                    for ii in 0..8 {
+                        while px >= W {px -= W};
+                        self.update_pixel(pixels, px, py, 
+                            (((memory[(self.I + i) as usize] >> (7 - ii)) & 1) == 1) as bool);
+                        px+=1
+                    };
+                    py+=1
+                };
+            },
+            Opcode(SKP, X(x)) => self.skip(key[(self.V[x as usize] & 0xF) as usize]),
+            Opcode(SKNP, X(x)) => self.skip(!key[(self.V[x as usize] & 0xF) as usize]),
+            Opcode(UNDEFINED, ..) => unimplemented!("Undefined opcode behaviour. Instruction: {:x}", instruction),
+            //_ => unimplemented!("This opcode is not implemented in this chip8 emulator. Opcode: {:?}", opcode)
             _ => match instruction {
                 0x00EE => {self.pc = self.stack[self.sp as usize]; self.sp-=1}, //RET; return from a subroutine
                 _ => match u {
@@ -199,6 +273,50 @@ impl Chip8 {
             if device.status()==AudioStatus::Playing {
                 device.pause();
             }
+        }
+    }
+
+    fn get_tuple_from_type(&self, op_type: OpcodeType) -> Option<(u16, u16)> {
+        match op_type {
+            XNN(x, nn) => Some((self.V[x as usize] as u16, nn)),
+            XY(x, y) => Some((self.V[x as usize] as u16, self.V[y as usize] as u16)),
+            _ => None
+        }
+    }
+
+    fn clear_display(&mut self) {
+        self.clear_display_flag = true; 
+        self.draw_flag = true
+    }
+
+    fn subroutine_return(&mut self) {
+        self.pc = self.stack[self.sp as usize]; 
+        self.sp -= 1 
+    }
+
+    fn jump(&mut self, location: u16) {
+        self.pc = location
+    }
+
+    fn subroutine_call(&mut self, location: u16) {
+        self.sp += 1; 
+        self.stack[self.sp as usize] = self.pc;
+        self.jump(location)
+    }
+
+    fn skip(&mut self, condition: bool) {
+        if condition { self.pc += 2 }
+    }
+
+    fn skip_equal(&mut self, op_type: OpcodeType) {
+        if let Some((left, right)) = self.get_tuple_from_type(op_type) {
+            self.skip(left==right)
+        }
+    }
+
+    fn skip_not_equal(&mut self, op_type: OpcodeType) {
+        if let Some((left, right)) = self.get_tuple_from_type(op_type) {
+            self.skip(left!=right)
         }
     }
 }
