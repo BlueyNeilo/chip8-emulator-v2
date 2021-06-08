@@ -78,7 +78,7 @@ fn main() {
                             key[i as usize] = true;
                             if chip8.key_wait {
                                 chip8.key_wait=false;
-                                chip8.reg_v[chip8.reg_wait]=i as u8
+                                chip8.V[chip8.reg_wait]=i as u8
                             }
                             //println!("Key 0x{:X} down",i)
                         }
