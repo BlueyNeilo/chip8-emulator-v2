@@ -5,7 +5,7 @@ use sdl2::audio::{AudioDevice, AudioStatus, AudioCallback};
 
 use rng::rng_byte;
 use constants::{W, H, N};
-use opcode::{Disassembler, OpcodeDisassembler};
+use opcode::{Opcode, Operation::*, OpcodeType::*, OpcodeDisassembler};
 
 #[allow(non_snake_case)]
 pub struct Chip8 {

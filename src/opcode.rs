@@ -74,12 +74,6 @@ impl Display for OpcodeType {
     }
 }
 
-pub trait Disassembler {
-    type Instruction;
-    type Opcode;
-    fn disassemble(Self::Instruction) -> Opcode;
-}
-
 #[derive(Debug, PartialEq)]
 pub struct Opcode(pub Operation, pub OpcodeType);
 
@@ -92,19 +86,16 @@ impl Display for Opcode {
 
 pub struct OpcodeDisassembler;
 
-impl Disassembler for OpcodeDisassembler {
-    type Instruction = u16;
-    type Opcode = Opcode;
-
-    fn disassemble(opcode: u16) -> Opcode {
-        let u = opcode >> 12;       //u___
-        let nnn = opcode & 0xFFF;   //_nnn
-        let nn = opcode & 0xFF;     //__nn
-        let n = opcode & 0xF;       //___n
-        let x = nnn >> 8;           //_x__
-        let y = nn >> 4;            //__y_
+impl OpcodeDisassembler {
+    pub fn disassemble(instruction: u16) -> Opcode {
+        let u = instruction >> 12;      //u___
+        let nnn = instruction & 0xFFF;  //_nnn
+        let nn = instruction & 0xFF;    //__nn
+        let n = instruction & 0xF;      //___n
+        let x = nnn >> 8;               //_x__
+        let y = nn >> 4;                //__y_
         
-        match opcode {
+        match instruction {
             0x00E0 => Opcode(CLS, NONE),            // Clear the screen
             0x00EE => Opcode(RET, NONE),            // Return from subroutine
             _ => match u {

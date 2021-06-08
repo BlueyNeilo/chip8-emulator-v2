@@ -1,7 +1,6 @@
 
 mod assembly_test {
-    use opcode::{Opcode, OpcodeDisassembler, Disassembler, 
-        Operation::*, OpcodeType::*};
+    use opcode::{Opcode, OpcodeDisassembler, Operation::*, OpcodeType::*};
 
     #[test]
     fn opcode_display() {
