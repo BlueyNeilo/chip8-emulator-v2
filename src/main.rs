@@ -28,7 +28,7 @@ use std::convert::TryInto;
 
 //Use internal modules
 mod memory;
-use memory::init_memory;
+use memory::Memory;
 
 mod rom_menu;
 use rom_menu::choose_rom;
@@ -44,10 +44,9 @@ mod io;
 use io::IO;
 
 mod constants;
-use constants::N;
+use constants::{N, KEY_VALUES};
 
 mod rng;
-
 mod opcode;
 
 #[cfg(test)]
@@ -56,15 +55,13 @@ mod tests;
 fn main() {
     let rom = choose_rom(); //String::from("./ROMs/PONG"); //let rom: String = "./pong.bin".to_string();
     let io = IO::new();
-    let mut memory: [u8; 0x1000] = [0; 0x1000]; //4kB program ROM and work RAM
     let mut key: [bool; 0x10] = [false; 0x10]; //0x0-0xF
-    let mut kvals: [Keycode; 0x10] = [Keycode::A; 0x10]; //Keyboard input configuration
-    init_memory(&mut memory, &mut kvals);
-    let kvals = kvals; //remove mutablity
-    let (mut display, mut event_pump, device) = (io.display, io.event_pump, io.audio_device);
+    let memory = Memory::new();
+    let Memory {mut ram, key_state} = memory;
+    let IO {mut display, mut event_pump, audio_device } = io;
     let mut chip8 = Chip8::new();
-    chip8.load_game(&mut memory, rom);
-    chip8.disassemble_code(&memory);
+    chip8.load_game(&mut ram, rom);
+    chip8.disassemble_code(&ram);
 
     'running: loop {
         for event in event_pump.poll_iter() {
@@ -73,7 +70,7 @@ fn main() {
                     break 'running
                 },
                 Event::KeyDown { keycode: Some(k), repeat: false, .. } => {
-                    for (i, kd) in kvals.iter().enumerate() {
+                    for (i, kd) in KEY_VALUES.iter().enumerate() {
                         if k==*kd {
                             key[i as usize] = true;
                             if chip8.key_wait {
@@ -85,7 +82,7 @@ fn main() {
                     }
                 },
                 Event::KeyUp { keycode: Some(k), repeat: false, .. } => {
-                    for (i, kd) in kvals.iter().enumerate() {
+                    for (i, kd) in KEY_VALUES.iter().enumerate() {
                         if k==*kd {
                             key[i as usize] = false;
                             //println!("Key 0x{:X} up",i)
@@ -100,7 +97,7 @@ fn main() {
 
         if !chip8.key_wait {
             let mut pixels: [bool; N] = (*display).get_pixels().as_slice().try_into().unwrap();
-            chip8.emulate_cycle(&mut memory, &mut pixels, &key, &device);
+            chip8.emulate_cycle(&mut ram, &mut pixels, &key_state, &audio_device);
             (*display).update_pixels(&pixels);
         };
 
