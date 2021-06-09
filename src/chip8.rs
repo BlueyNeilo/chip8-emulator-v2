@@ -1,4 +1,3 @@
-use sdl2::audio::{AudioDevice, AudioCallback};
 use byteorder::{ByteOrder, BigEndian};
 
 use rng::rng_byte;

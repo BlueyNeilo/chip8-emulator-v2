@@ -2,14 +2,13 @@ use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use byteorder::{ByteOrder, BigEndian};
 
-use std::convert::TryInto;
 use std::fs::File;
 use std::io::Read;
 
 use memory::Memory;
 use chip8::Chip8;
 use io::IO;
-use constants::{N, KEY_VALUES, ROM_ADDR};
+use constants::{KEY_VALUES, ROM_ADDR};
 use opcode::OpcodeDisassembler;
 use command::{Command::{self}, CommandInterpreter};
 
