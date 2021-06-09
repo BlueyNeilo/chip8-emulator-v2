@@ -1,12 +1,13 @@
 use std::time::Duration;
 use std::thread::sleep;
-use sdl2::audio::AudioDevice;
+use sdl2::audio::{AudioDevice, AudioStatus};
 use sdl2::EventPump;
 
 use display::{Display, WindowDisplay};
-use audio::{setup_square_audio,SquareWave};
+use audio::{setup_square_audio, SquareWave};
 use constants::{W, H, N, PIXEL_SIZE};
-use command::{CommandInterface, CommandInterpreter, Command, DisplayCommand};
+use command::{CommandInterface, CommandInterpreter, Command, 
+    DisplayCommand, AudioCommand};
 
 const SCREEN_FPS: u32 = 10;
 const FRAME_CYCLE: u32 = 120;
@@ -44,6 +45,18 @@ impl CommandInterpreter for IO {
                     DisplayCommand::SendClearDisplay => self.display.reset_screen(),
                     DisplayCommand::SendDraw => self.display.draw_pixels(),
                     DisplayCommand::SendPixels(p) => self.display.update_pixels(p)
+                },
+                Command::Audio(c) => match c {
+                    AudioCommand::Play => {
+                        if self.audio_device.status()==AudioStatus::Paused {
+                            self.audio_device.resume();
+                        }
+                    },
+                    AudioCommand::Pause => {
+                        if self.audio_device.status()==AudioStatus::Playing {
+                            self.audio_device.pause();
+                        }
+                    }
                 }
                 _ => {}
             })

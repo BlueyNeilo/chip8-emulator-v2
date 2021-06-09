@@ -72,7 +72,8 @@ impl Emulator {
             };
             self.chip8.commands.output_stack.pop_all().into_iter().for_each(|c|
                 match c {
-                    Command::Display(_) => self.io.commands.input_stack.push(c),
+                    Command::Display(_)
+                    | Command::Audio(_) => self.io.commands.input_stack.push(c),
                     _ => {}
                 });
         }

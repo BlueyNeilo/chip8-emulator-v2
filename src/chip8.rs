@@ -1,10 +1,11 @@
-use sdl2::audio::{AudioDevice, AudioStatus, AudioCallback};
+use sdl2::audio::{AudioDevice, AudioCallback};
 use byteorder::{ByteOrder, BigEndian};
 
 use rng::rng_byte;
 use constants::{W, H, N, ROM_ADDR};
 use opcode::{Opcode, Operation::*, OpcodeType::{self,*}, OpcodeDisassembler};
-use command::{CommandInterface, CommandInterpreter, Command, DisplayCommand::*};
+use command::{CommandInterface, CommandInterpreter, Command, 
+    DisplayCommand::*, AudioCommand::*};
 
 #[allow(non_snake_case)]
 pub struct Chip8 {
@@ -68,15 +69,9 @@ impl Chip8 {
         if self.delay_timer>0 { self.delay_timer-=1 };
         if self.sound_timer>0 {
             self.sound_timer-=1;
-            if device.status()==AudioStatus::Paused {
-                device.resume();
-            }
-        }
-        else
-        {
-            if device.status()==AudioStatus::Playing {
-                device.pause();
-            }
+            self.commands.output_stack.push(Command::Audio(Play));
+        } else {
+            self.commands.output_stack.push(Command::Audio(Pause));
         }
 
         if self.clear_display_flag {
