@@ -29,6 +29,7 @@ mod constants;
 mod rng;
 mod opcode;
 mod emulator;
+mod command;
 
 use rom_menu::choose_rom;
 use emulator::Emulator;

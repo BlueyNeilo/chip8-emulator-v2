@@ -4,6 +4,7 @@ use byteorder::{ByteOrder, BigEndian};
 use rng::rng_byte;
 use constants::{W, H, N};
 use opcode::{Opcode, Operation::*, OpcodeType::{self,*}, OpcodeDisassembler};
+use command::{CommandInterface, CommandInterpreter};
 
 #[allow(non_snake_case)]
 pub struct Chip8 {
@@ -17,7 +18,14 @@ pub struct Chip8 {
     pub V: [u8; 0x10], //16 general purpose registers V0..V15. V15 (VF) is used for the carry flag
     delay_timer: u8, //counts down to 0 (60Hz)
     sound_timer: u8, //counts down to 0 (60Hz). system's buzzer sounds whenever the timer reaches 0.
-    pub clear_display_flag: bool
+    pub clear_display_flag: bool,
+    pub commands: CommandInterface
+}
+
+impl CommandInterpreter for Chip8 {
+    fn read_commands(&mut self) {
+        unimplemented!("Chip8 can't read commands yet")
+    }
 }
 
 impl Chip8 {
@@ -33,7 +41,8 @@ impl Chip8 {
             V: [0; 0x10],
             delay_timer: 0,
             sound_timer: 0,
-            clear_display_flag: false
+            clear_display_flag: false,
+            commands: CommandInterface::new()
         }
     }
 
