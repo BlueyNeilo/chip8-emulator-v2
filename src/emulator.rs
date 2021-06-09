@@ -1,5 +1,4 @@
-use sdl2::event::Event;
-use sdl2::keyboard::Keycode;
+
 use byteorder::{ByteOrder, BigEndian};
 
 use std::fs::File;
@@ -8,14 +7,15 @@ use std::io::Read;
 use memory::Memory;
 use chip8::Chip8;
 use io::IO;
-use constants::{KEY_VALUES, ROM_ADDR};
+use constants::{ROM_ADDR};
 use opcode::OpcodeDisassembler;
-use command::{Command::{self}, CommandInterpreter};
+use command::{Command::{self}, CommandInterpreter, GameCommand::*};
 
 pub struct Chip8Emulator {
     io: IO,
     memory: Memory,
-    chip8: Chip8
+    chip8: Chip8,
+    running_flag: bool,
 }
 
 impl Chip8Emulator {
@@ -23,7 +23,8 @@ impl Chip8Emulator {
         Chip8Emulator {
             io: IO::new(),
             memory: Memory::new(),
-            chip8: Chip8::new()
+            chip8: Chip8::new(),
+            running_flag: true,
         }
     }
 
@@ -32,47 +33,20 @@ impl Chip8Emulator {
         self.load_rom(&rom_bytes);
         self.disassemble_code(&rom_bytes);
 
-        'running: loop {
-            for event in self.io.event_pump.poll_iter() {
-                match event {
-                    Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                        break 'running
-                    },
-                    Event::KeyDown { keycode: Some(k), repeat: false, .. } => {
-                        for (i, kd) in KEY_VALUES.iter().enumerate() {
-                            if k==*kd {
-                                self.memory.key_state[i as usize] = true;
-                                if self.chip8.key_wait {
-                                    self.chip8.key_wait=false;
-                                    self.chip8.V[self.chip8.reg_wait]=i as u8
-                                }
-                            }
-                        }
-                    },
-                    Event::KeyUp { keycode: Some(k), repeat: false, .. } => {
-                        for (i, kd) in KEY_VALUES.iter().enumerate() {
-                            if k==*kd {
-                                self.memory.key_state[i as usize] = false;
-                            }
-                        }
-                    },
-                    _ => {}
-                }
-            };
-
-            IO::sleep_frame();
-
+        while self.running_flag {
             self.io.read_commands();
             self.io.emulate_cycle();
             self.io.commands.output_stack.pop_all().into_iter().for_each(|c|
                 match c {
                     Command::Display(_)
-                    | Command::Audio(_) => self.chip8.commands.input_stack.push(c),
+                    | Command::Audio(_)
+                    | Command::Key(_) => self.chip8.commands.input_stack.push(c),
+                    Command::GameState(Exit) => self.running_flag = false,
                     _ => {}
                 });
             
             self.chip8.read_commands();
-            self.chip8.emulate_cycle(&mut self.memory.ram, &self.memory.key_state);
+            self.chip8.emulate_cycle(&mut self.memory.ram);
             self.chip8.commands.output_stack.pop_all().into_iter().for_each(|c|
                 match c {
                     Command::Display(_)

@@ -4,7 +4,7 @@ use rng::rng_byte;
 use constants::{W, H, N, ROM_ADDR};
 use opcode::{Opcode, Operation::*, OpcodeType::{self,*}, OpcodeDisassembler};
 use command::{CommandInterface, CommandInterpreter, Command, 
-    DisplayCommand::{self, *}, AudioCommand::*};
+    DisplayCommand::{self, *}, AudioCommand::*, KeyCommand};
 
 #[allow(non_snake_case)]
 pub struct Chip8 {
@@ -32,6 +32,15 @@ impl CommandInterpreter for Chip8 {
                     DisplayCommand::SendPixels(p) => self.pixel_buf.copy_from_slice(p),
                     _ => {}
                 },
+                Command::Key(c) => match *c {
+                    KeyCommand::KeyDownUp(key_i, key_is_down) => {
+                        self.key_buf[key_i] = key_is_down;
+                        if self.key_wait && key_is_down {
+                            self.key_wait=false;
+                            self.V[self.reg_wait]=key_i as u8
+                        }
+                    }
+                }
                 _ => {}
             })
     }
@@ -63,7 +72,7 @@ impl Chip8 {
         self.draw_flag = true
     }
 
-    pub fn emulate_cycle(&mut self, memory: &mut [u8; 0x1000], key: &[bool; 0x10]) {
+    pub fn emulate_cycle(&mut self, memory: &mut [u8; 0x1000]) {
         if !self.key_wait {
             //Fetch Instruction
             let pc = self.pc as usize;
@@ -74,19 +83,19 @@ impl Chip8 {
             let opcode: Opcode = OpcodeDisassembler::disassemble(instruction);
 
             //Execute Opcode
-            self.execute_opcode(opcode, memory, key);
+            self.execute_opcode(opcode, memory);
 
             //Update timers and control audio beep
-            if self.delay_timer>0 { self.delay_timer-=1 };
-            if self.sound_timer>0 {
-                self.sound_timer-=1;
+            if self.delay_timer > 0 { self.delay_timer -= 1 };
+            if self.sound_timer > 0 {
+                self.sound_timer -= 1;
                 self.commands.output_stack.push(Command::Audio(Play));
             } else {
                 self.commands.output_stack.push(Command::Audio(Pause));
             }
 
-            self.commands.output_stack.push(Command::Display(
-                SendPixels(self.pixel_buf.clone())));
+            self.commands.output_stack.push(
+                Command::Display(SendPixels(self.pixel_buf.clone())));
             
             if self.clear_display_flag {
                 self.commands.output_stack.push(Command::Display(SendClearDisplay));
@@ -100,7 +109,7 @@ impl Chip8 {
         }
     }
 
-    fn execute_opcode(&mut self, opcode: Opcode, memory: &mut [u8; 0x1000], key: &[bool; 0x10]) {
+    fn execute_opcode(&mut self, opcode: Opcode, memory: &mut [u8; 0x1000]) {
         match opcode {
             Opcode(CLS, NONE) => self.clear_display(),
             Opcode(RET, NONE) => self.subroutine_return(),
@@ -179,8 +188,8 @@ impl Chip8 {
                     py+=1
                 };
             },
-            Opcode(SKP, X(x)) => self.skip(key[(self.V[x as usize] & 0xF) as usize]),
-            Opcode(SKNP, X(x)) => self.skip(!key[(self.V[x as usize] & 0xF) as usize]),
+            Opcode(SKP, X(x)) => self.skip(self.key_buf[(self.V[x as usize] & 0xF) as usize]),
+            Opcode(SKNP, X(x)) => self.skip(!self.key_buf[(self.V[x as usize] & 0xF) as usize]),
             Opcode(UNDEFINED, ..) => unimplemented!("Undefined opcode behaviour encountered in program."),
             _ => unimplemented!("This opcode is not implemented in this chip8 emulator. Opcode: {:?}", opcode)
         }

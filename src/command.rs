@@ -43,7 +43,8 @@ pub enum Command {
     Memory(MemoryCommand),
     Audio(AudioCommand),
     Display(DisplayCommand),
-    Key(KeystrokeCommand),
+    Key(KeyCommand),
+    GameState(GameCommand),
 }
 
 pub enum MemoryCommand {
@@ -61,7 +62,10 @@ pub enum DisplayCommand {
     SendClearDisplay
 }
 
-pub enum KeystrokeCommand {
-    GetKeys,
-    SendKeys([bool; 0x10])
+pub enum KeyCommand {
+    KeyDownUp(usize, bool)
+}
+
+pub enum GameCommand {
+    Exit
 }

@@ -9,8 +9,7 @@ use constants::*;
 
 #[derive(Clone)]
 pub struct Memory {
-    pub ram: [u8; RAM_BYTES],
-    pub key_state: [bool; KEYS]
+    pub ram: [u8; RAM_BYTES]
 }
 
 impl Memory {
@@ -24,8 +23,7 @@ impl Memory {
         }
 
         Memory {
-            ram: ram,
-            key_state: [false; KEYS]
+            ram: ram
         }
     }
 }

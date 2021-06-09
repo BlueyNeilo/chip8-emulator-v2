@@ -2,14 +2,16 @@ use std::time::Duration;
 use std::thread::sleep;
 use sdl2::audio::{AudioDevice, AudioStatus};
 use sdl2::EventPump;
+use sdl2::event::Event;
+use sdl2::keyboard::Keycode;
 
 use std::convert::TryInto;
 
 use display::{Display, WindowDisplay};
 use audio::{setup_square_audio, SquareWave};
-use constants::{W, H, N, PIXEL_SIZE};
+use constants::{W, H, N, PIXEL_SIZE, KEY_VALUES};
 use command::{CommandInterface, CommandInterpreter, Command, 
-    DisplayCommand::{*, self}, AudioCommand};
+    DisplayCommand::{*, self}, AudioCommand, KeyCommand::*, GameCommand::Exit};
 
 const SCREEN_FPS: u32 = 10;
 const FRAME_CYCLE: u32 = 120;
@@ -36,11 +38,48 @@ impl IO {
 
     pub fn emulate_cycle(&mut self) {
         self.commands.output_stack.push(Command::Display(
-            SendPixels(self.display.get_pixels().try_into().unwrap())))
+            SendPixels(self.display.get_pixels().try_into().unwrap())));
+    
+        self.poll_event_pump();
+
+        IO::sleep_frame();
     }
 
-    pub fn sleep_frame() {
+    pub fn poll_event_pump(&mut self) {
+        for event in self.event_pump.poll_iter() {
+            match event {
+                Event::Quit {..} 
+                | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
+                    self.commands.output_stack.push(Command::GameState(Exit))
+                },
+                Event::KeyDown { keycode: Some(key), repeat: false, .. } => {
+                    if let Some(key_i) = IO::get_key_index(key) {
+                        self.commands.output_stack.push(
+                            Command::Key(KeyDownUp(key_i, true)))
+                    }
+                },
+                Event::KeyUp { keycode: Some(key), repeat: false, .. } => {
+                    if let Some(key_i) = IO::get_key_index(key) {
+                        self.commands.output_stack.push(
+                            Command::Key(KeyDownUp(key_i, false)))
+                    }
+                },
+                _ => {}
+            }
+        };
+    }
+
+    fn sleep_frame() {
         sleep(Duration::new(0, NANO_UNIT / SCREEN_FPS / FRAME_CYCLE));
+    }
+
+    fn get_key_index(key: Keycode) -> Option<usize> {
+        for (i, key_lookup) in KEY_VALUES.iter().enumerate() {
+            if key==*key_lookup {
+                return Some(i)
+            }
+        }
+        None
     }
 }
 
