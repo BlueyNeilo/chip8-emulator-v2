@@ -36,7 +36,7 @@ use emulator::Emulator;
 mod tests;
 
 fn main() {
-    let emulator = Emulator::new();
-    let rom = choose_rom(); //String::from("./ROMs/PONG"); //let rom: String = "./pong.bin".to_string();
-    emulator.start_game(rom)
+    let rom = choose_rom(); //"./ROMs/PONG";
+    let mut emulator = Emulator::new();
+    emulator.start_game(&rom)
 }

@@ -39,7 +39,7 @@ impl Chip8 {
         }
     }
 
-    pub fn load_game(&mut self, memory:  &mut [u8; 0x1000], game_name: String) {
+    pub fn load_game(&mut self, memory:  &mut [u8; 0x1000], game_name: &str) {
         let mut rom_buf: Vec<u8> = Vec::new();
         let mut file = File::open(&game_name).unwrap();
         file.read_to_end(&mut rom_buf).unwrap();

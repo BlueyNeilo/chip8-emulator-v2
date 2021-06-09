@@ -10,24 +10,27 @@ use io::IO;
 use constants::{N, KEY_VALUES};
 
 
-pub struct Emulator;
+pub struct Emulator {
+    io: IO,
+    memory: Memory,
+    chip8: Chip8
+}
 
 impl Emulator {
     pub fn new() -> Self {
-        Emulator {}
+        Emulator {
+            io: IO::new(),
+            memory: Memory::new(),
+            chip8: Chip8::new()
+        }
     }
 
-    pub fn start_game(&self, rom: String) {
-        let io = IO::new();
-        let memory = Memory::new();
-        let Memory {mut ram, mut key_state} = memory;
-        let IO {mut display, mut event_pump, audio_device } = io;
-        let mut chip8 = Chip8::new();
-        chip8.load_game(&mut ram, rom);
-        chip8.disassemble_code(&ram);
+    pub fn start_game(&mut self, rom: &str) {
+        self.chip8.load_game(&mut self.memory.ram, &rom);
+        self.chip8.disassemble_code(&mut self.memory.ram);
 
         'running: loop {
-            for event in event_pump.poll_iter() {
+            for event in self.io.event_pump.poll_iter() {
                 match event {
                     Event::Quit {..} | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
                         break 'running
@@ -35,20 +38,18 @@ impl Emulator {
                     Event::KeyDown { keycode: Some(k), repeat: false, .. } => {
                         for (i, kd) in KEY_VALUES.iter().enumerate() {
                             if k==*kd {
-                                key_state[i as usize] = true;
-                                if chip8.key_wait {
-                                    chip8.key_wait=false;
-                                    chip8.V[chip8.reg_wait]=i as u8
+                                self.memory.key_state[i as usize] = true;
+                                if self.chip8.key_wait {
+                                    self.chip8.key_wait=false;
+                                    self.chip8.V[self.chip8.reg_wait]=i as u8
                                 }
-                                //println!("Key 0x{:X} down",i)
                             }
                         }
                     },
                     Event::KeyUp { keycode: Some(k), repeat: false, .. } => {
                         for (i, kd) in KEY_VALUES.iter().enumerate() {
                             if k==*kd {
-                                key_state[i as usize] = false;
-                                //println!("Key 0x{:X} up",i)
+                                self.memory.key_state[i as usize] = false;
                             }
                         }
                     },
@@ -58,18 +59,18 @@ impl Emulator {
 
             IO::sleep_frame();
 
-            if !chip8.key_wait {
-                let mut pixels: [bool; N] = (*display).get_pixels().as_slice().try_into().unwrap();
-                chip8.emulate_cycle(&mut ram, &mut pixels, &key_state, &audio_device);
-                (*display).update_pixels(&pixels);
+            if !self.chip8.key_wait {
+                let mut pixels: [bool; N] = self.io.display.get_pixels().as_slice().try_into().unwrap();
+                self.chip8.emulate_cycle(&mut self.memory.ram, &mut pixels, &self.memory.key_state, &self.io.audio_device);
+                (self.io.display).update_pixels(&pixels);
             };
 
-            if chip8.draw_flag {
-                (*display).draw_pixels();
-                chip8.draw_flag = false;
-                if chip8.clear_display_flag {
-                    (*display).reset_screen();
-                    chip8.clear_display_flag = false
+            if self.chip8.draw_flag {
+                self.io.display.draw_pixels();
+                self.chip8.draw_flag = false;
+                if self.chip8.clear_display_flag {
+                    self.io.display.reset_screen();
+                    self.chip8.clear_display_flag = false
                 }
             }
         }
