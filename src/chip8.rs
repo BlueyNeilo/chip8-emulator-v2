@@ -20,7 +20,8 @@ pub struct Chip8 {
     delay_timer: u8, //counts down to 0 (60Hz)
     sound_timer: u8, //counts down to 0 (60Hz). system's buzzer sounds whenever the timer reaches 0.
     clear_display_flag: bool,
-    pub commands: CommandInterface
+    pub commands: CommandInterface,
+    key_buf: [bool; 0x10]
 }
 
 impl CommandInterpreter for Chip8 {
@@ -43,7 +44,8 @@ impl Chip8 {
             delay_timer: 0,
             sound_timer: 0,
             clear_display_flag: false,
-            commands: CommandInterface::new()
+            commands: CommandInterface::new(),
+            key_buf: [false; 0x10],
         }
     }
 
@@ -53,7 +55,7 @@ impl Chip8 {
         self.draw_flag = true
     }
 
-    pub fn emulate_cycle(&mut self, memory: &mut [u8; 0x1000], pixels: &mut [bool; N], key: &[bool; 0x10], device: &AudioDevice<impl AudioCallback>) {
+    pub fn emulate_cycle(&mut self, memory: &mut [u8; 0x1000], pixels: &mut [bool; N], key: &[bool; 0x10]) {
         //Fetch Instruction
         let pc = self.pc as usize;
         let instruction: u16 = BigEndian::read_u16(&memory[pc..pc+2]);

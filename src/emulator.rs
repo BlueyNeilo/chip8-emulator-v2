@@ -67,7 +67,7 @@ impl Emulator {
             //self.chip8.read_commands();
             if !self.chip8.key_wait {
                 let mut pixels: [bool; N] = self.io.display.get_pixels().as_slice().try_into().unwrap();
-                self.chip8.emulate_cycle(&mut self.memory.ram, &mut pixels, &self.memory.key_state, &self.io.audio_device);
+                self.chip8.emulate_cycle(&mut self.memory.ram, &mut pixels, &self.memory.key_state);
                 (self.io.display).update_pixels(&pixels);
             };
             self.chip8.commands.output_stack.pop_all().into_iter().for_each(|c|
