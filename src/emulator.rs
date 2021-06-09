@@ -11,7 +11,7 @@ use chip8::Chip8;
 use io::IO;
 use constants::{N, KEY_VALUES, ROM_ADDR};
 use opcode::OpcodeDisassembler;
-use command::{Command::{*, self}, CommandInterpreter, DisplayCommand};
+use command::{Command::{*, self}, CommandInterpreter};
 
 pub struct Emulator {
     io: IO,
@@ -62,19 +62,17 @@ impl Emulator {
             };
 
             IO::sleep_frame();
+
+            self.io.read_commands();
             //self.chip8.read_commands();
             if !self.chip8.key_wait {
                 let mut pixels: [bool; N] = self.io.display.get_pixels().as_slice().try_into().unwrap();
                 self.chip8.emulate_cycle(&mut self.memory.ram, &mut pixels, &self.memory.key_state, &self.io.audio_device);
                 (self.io.display).update_pixels(&pixels);
             };
-            self.chip8.commands.output_stack.pop_all().iter().for_each(|c|
+            self.chip8.commands.output_stack.pop_all().into_iter().for_each(|c|
                 match c {
-                    Command::Display(c) => match c {
-                        DisplayCommand::SendClearDisplay => self.io.display.reset_screen(),
-                        DisplayCommand::SendDraw => self.io.display.draw_pixels(),
-                        _ => {}
-                    },
+                    Command::Display(_) => self.io.commands.input_stack.push(c),
                     _ => {}
                 });
         }
