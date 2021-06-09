@@ -44,7 +44,6 @@ pub enum Command {
     Audio(AudioCommand),
     Display(DisplayCommand),
     Key(KeystrokeCommand),
-    Chip8(Chip8Command)
 }
 
 pub enum MemoryCommand {
@@ -57,15 +56,12 @@ pub enum AudioCommand {
 }
 
 pub enum DisplayCommand {
-    SendPixels([bool; N])
+    SendPixels([bool; N]),
+    SendDraw,
+    SendClearDisplay
 }
 
 pub enum KeystrokeCommand {
     GetKeys,
     SendKeys([bool; 0x10])
-}
-
-pub enum Chip8Command {
-    SendDraw,
-    SendClearDisplay
 }

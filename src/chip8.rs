@@ -4,11 +4,11 @@ use byteorder::{ByteOrder, BigEndian};
 use rng::rng_byte;
 use constants::{W, H, N};
 use opcode::{Opcode, Operation::*, OpcodeType::{self,*}, OpcodeDisassembler};
-use command::{CommandInterface, CommandInterpreter};
+use command::{CommandInterface, CommandInterpreter, Command, DisplayCommand::*};
 
 #[allow(non_snake_case)]
 pub struct Chip8 {
-    pub draw_flag: bool, //Only draw if screen changes: 0x00E0 – Clear screen, 0xDXYN – Draw sprite
+    draw_flag: bool, //Only draw if screen changes: 0x00E0 – Clear screen, 0xDXYN – Draw sprite
     pub key_wait: bool, //set to true if the program is waiting for a key to be entered
     pub reg_wait: usize, //the index of the V register the waited key value will be stored in
     pc: u16, //Program counter
@@ -18,7 +18,7 @@ pub struct Chip8 {
     pub V: [u8; 0x10], //16 general purpose registers V0..V15. V15 (VF) is used for the carry flag
     delay_timer: u8, //counts down to 0 (60Hz)
     sound_timer: u8, //counts down to 0 (60Hz). system's buzzer sounds whenever the timer reaches 0.
-    pub clear_display_flag: bool,
+    clear_display_flag: bool,
     pub commands: CommandInterface
 }
 
@@ -77,6 +77,16 @@ impl Chip8 {
             if device.status()==AudioStatus::Playing {
                 device.pause();
             }
+        }
+
+        if self.clear_display_flag {
+            self.commands.output_stack.push(Command::Display(SendClearDisplay));
+            self.clear_display_flag = false
+        }
+
+        if self.draw_flag {
+            self.commands.output_stack.push(Command::Display(SendDraw));
+            self.draw_flag = false;
         }
     }
 
