@@ -32,13 +32,13 @@ mod emulator;
 mod command;
 
 use rom_menu::choose_rom;
-use emulator::Emulator;
+use emulator::Chip8Emulator;
 
 #[cfg(test)]
 mod tests;
 
 fn main() {
     let rom = choose_rom(); //"./ROMs/PONG";
-    let mut emulator = Emulator::new();
+    let mut emulator = Chip8Emulator::new();
     emulator.start_game(&rom)
 }

@@ -12,15 +12,15 @@ use constants::{KEY_VALUES, ROM_ADDR};
 use opcode::OpcodeDisassembler;
 use command::{Command::{self}, CommandInterpreter};
 
-pub struct Emulator {
+pub struct Chip8Emulator {
     io: IO,
     memory: Memory,
     chip8: Chip8
 }
 
-impl Emulator {
+impl Chip8Emulator {
     pub fn new() -> Self {
-        Emulator {
+        Chip8Emulator {
             io: IO::new(),
             memory: Memory::new(),
             chip8: Chip8::new()
