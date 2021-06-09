@@ -17,6 +17,7 @@ graphics are drawn only with sprites
 
 extern crate sdl2;
 extern crate rand;
+extern crate byteorder;
 
 mod memory;
 mod rom_menu;

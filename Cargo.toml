@@ -6,3 +6,4 @@ authors = ["Patrick Neilson"]
 [dependencies]
 rand = "*"
 sdl2 = "*"
+byteorder = "*"

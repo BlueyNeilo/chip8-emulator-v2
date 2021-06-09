@@ -2,6 +2,7 @@
 use std::fs::File;
 use std::io::Read;
 use sdl2::audio::{AudioDevice, AudioStatus, AudioCallback};
+use byteorder::{ByteOrder, BigEndian};
 
 use rng::rng_byte;
 use constants::{W, H, N};
@@ -69,14 +70,10 @@ impl Chip8 {
         }
     }
     
-    fn fetch_instruction(&mut self, bytes: &[u8]) -> u16 {
-        (bytes[0] as u16) << 8 | bytes[1] as u16
-    }
-
     pub fn emulate_cycle(&mut self, memory: &mut [u8; 0x1000], pixels: &mut [bool; N], key: &[bool; 0x10], device: &AudioDevice<impl AudioCallback>) {
         //Fetch Instruction
         let pc = self.pc as usize;
-        let instruction: u16 = self.fetch_instruction(&memory[pc..pc+2]);
+        let instruction: u16 = BigEndian::read_u16(&memory[pc..pc+2]);
         self.pc += 2;
 
         //Decode Opcode
