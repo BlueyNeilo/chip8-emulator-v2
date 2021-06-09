@@ -11,7 +11,7 @@ use chip8::Chip8;
 use io::IO;
 use constants::{N, KEY_VALUES, ROM_ADDR};
 use opcode::OpcodeDisassembler;
-use command::{Command::{*, self}, CommandInterpreter};
+use command::{Command::{self}, CommandInterpreter};
 
 pub struct Emulator {
     io: IO,
@@ -82,8 +82,8 @@ impl Emulator {
         let mut rom_buf: Vec<u8> = Vec::new();
         let mut file = File::open(&rom_path).unwrap();
         file.read_to_end(&mut rom_buf).unwrap();
-        rom_buf
         
+        rom_buf
     }
 
     pub fn load_rom(&mut self, rom_bytes: &Vec<u8>) {

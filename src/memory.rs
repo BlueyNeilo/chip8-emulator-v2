@@ -28,5 +28,4 @@ impl Memory {
             key_state: [false; KEYS]
         }
     }
-
 }

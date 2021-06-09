@@ -2,7 +2,7 @@ use sdl2::audio::{AudioDevice, AudioStatus, AudioCallback};
 use byteorder::{ByteOrder, BigEndian};
 
 use rng::rng_byte;
-use constants::{W, H, N};
+use constants::{W, H, N, ROM_ADDR};
 use opcode::{Opcode, Operation::*, OpcodeType::{self,*}, OpcodeDisassembler};
 use command::{CommandInterface, CommandInterpreter, Command, DisplayCommand::*};
 
@@ -34,7 +34,7 @@ impl Chip8 {
             draw_flag: false,
             key_wait: false,
             reg_wait: 0,
-            pc: 0x200, //program starts at 0x200
+            pc: ROM_ADDR as u16,
             I: 0,
             sp: 0,
             stack: [0; 0x10],
