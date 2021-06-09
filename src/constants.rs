@@ -1,4 +1,5 @@
 use sdl2::keyboard::Keycode;
+use sdl2::pixels::Color;
 
 pub const W: usize = 64;
 pub const H: usize = 32;
@@ -10,6 +11,9 @@ pub const RAM_BYTES: usize = 0x1000;
 pub const FONT_ADDR: usize = 0x50;
 pub const ROM_ADDR: usize = 0x200;
 pub const KEYS: usize = 0x10;
+
+pub static BLACK: Color = Color { r: 0, g: 0, b: 0, a: 0xff };
+pub const WHITE: Color = Color { r: 255, g: 255, b: 255, a: 0xff };
 
 /*
 1234

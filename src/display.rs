@@ -1,7 +1,8 @@
 use sdl2::Sdl;
 use sdl2::render::WindowCanvas;
 use sdl2::rect::Rect;
-use sdl2::pixels::Color;
+
+use constants::{BLACK, WHITE};
 
 pub trait Display<T> {
     fn draw_pixels(&mut self);
@@ -39,7 +40,7 @@ WindowDisplay<W, H, N, PIXEL_SIZE>
             .present_vsync()
             .build().unwrap(); //WindowCanvas
     
-        canvas.set_draw_color(Color::RGB(0, 0, 0));
+        canvas.set_draw_color(BLACK);
         canvas.clear();
         canvas.present();
         
@@ -53,9 +54,9 @@ WindowDisplay<W, H, N, PIXEL_SIZE>
 impl <const W: usize, const H: usize, const N: usize, const PIXEL_SIZE: u32> 
 Display<bool> for WindowDisplay<W, H, N, PIXEL_SIZE> {
     fn draw_pixels(&mut self) {
-        self.canvas.set_draw_color(Color::RGB(0,0,0)); //black
+        self.canvas.set_draw_color(BLACK);
         self.canvas.clear();
-        self.canvas.set_draw_color(Color::RGB(255,255,255)); //white
+        self.canvas.set_draw_color(WHITE);
         let width: i32 = W as i32;
         
         for (i,v) in self.pixels.iter().enumerate() {
