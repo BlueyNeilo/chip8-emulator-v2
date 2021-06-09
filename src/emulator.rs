@@ -1,14 +1,16 @@
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use byteorder::{ByteOrder, BigEndian};
+
 use std::convert::TryInto;
+use std::fs::File;
+use std::io::Read;
 
 use memory::Memory;
 use chip8::Chip8;
 use io::IO;
-
-
-use constants::{N, KEY_VALUES};
-
+use constants::{N, KEY_VALUES, ROM_ADDR};
+use opcode::OpcodeDisassembler;
 
 pub struct Emulator {
     io: IO,
@@ -25,9 +27,10 @@ impl Emulator {
         }
     }
 
-    pub fn start_game(&mut self, rom: &str) {
-        self.chip8.load_game(&mut self.memory.ram, &rom);
-        self.chip8.disassemble_code(&mut self.memory.ram);
+    pub fn start_game(&mut self, rom_path: &str) {
+        let rom_bytes = self.get_rom_bytes(rom_path);
+        self.load_rom(&rom_bytes);
+        self.disassemble_code(&rom_bytes);
 
         'running: loop {
             for event in self.io.event_pump.poll_iter() {
@@ -74,5 +77,34 @@ impl Emulator {
                 }
             }
         }
+    }
+
+    pub fn get_rom_bytes(&mut self, rom_path: &str) -> Vec<u8> {
+        let mut rom_buf: Vec<u8> = Vec::new();
+        let mut file = File::open(&rom_path).unwrap();
+        file.read_to_end(&mut rom_buf).unwrap();
+        rom_buf
+        
+    }
+
+    pub fn load_rom(&mut self, rom_bytes: &Vec<u8>) {
+        let mut addr = ROM_ADDR;
+        for byte in rom_bytes {
+            self.memory.ram[addr]=*byte;
+            addr+=1
+        }
+    }
+
+    pub fn disassemble_code(&mut self, rom_bytes: &Vec<u8>) {
+        println!("Disassembling code: \n");
+
+        (0..rom_bytes.len()/2)
+            .map(|i| (i, BigEndian::read_u16(&rom_bytes[i*2..i*2+2])))
+            .for_each(|(i, instruction)| {
+                println!("{:03x}: {:04X} '{}'", 
+                    i + ROM_ADDR, 
+                    instruction,
+                    OpcodeDisassembler::disassemble(instruction))
+            })
     }
 }

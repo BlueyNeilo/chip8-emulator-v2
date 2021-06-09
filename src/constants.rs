@@ -8,6 +8,7 @@ pub const PIXEL_SIZE: u32 = 20;
 // 4kB program ROM and work RAM
 pub const RAM_BYTES: usize = 0x1000; 
 pub const FONT_ADDR: usize = 0x50;
+pub const ROM_ADDR: usize = 0x200;
 pub const KEYS: usize = 0x10;
 
 /*

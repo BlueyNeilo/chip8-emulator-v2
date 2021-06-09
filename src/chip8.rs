@@ -1,6 +1,3 @@
-//ROM file access
-use std::fs::File;
-use std::io::Read;
 use sdl2::audio::{AudioDevice, AudioStatus, AudioCallback};
 use byteorder::{ByteOrder, BigEndian};
 
@@ -40,36 +37,12 @@ impl Chip8 {
         }
     }
 
-    pub fn load_game(&mut self, memory:  &mut [u8; 0x1000], game_name: &str) {
-        let mut rom_buf: Vec<u8> = Vec::new();
-        let mut file = File::open(&game_name).unwrap();
-        file.read_to_end(&mut rom_buf).unwrap();
-        let mut addr = 0x200;
-        for byte in &rom_buf {
-            memory[addr]=*byte;
-            addr+=1
-        }
-    }
-
     fn update_pixel(&mut self, pixels: &mut [bool; N], x: usize, y: usize, val: bool) {
         if pixels[y*W+x] && val {self.V[0xF]=1};
         pixels[y*W+x] ^= val;
         self.draw_flag = true
     }
 
-    pub fn disassemble_code(&mut self, memory: &[u8; 0x1000]) {
-        println!("Disassembling code: \n");
-
-        let mut addr: usize = 0x200;
-        let mut opcode: u16 = (memory[addr] as u16) << 8 | (memory[addr + 1] as u16);
-        while opcode!=0 {
-            let disassembled = OpcodeDisassembler::disassemble(opcode);
-            println!("{:03x}: {:04X} '{}'", addr, opcode, disassembled);
-            addr+=2;
-            opcode = (memory[addr] as u16) << 8 | (memory[addr + 1] as u16)
-        }
-    }
-    
     pub fn emulate_cycle(&mut self, memory: &mut [u8; 0x1000], pixels: &mut [bool; N], key: &[bool; 0x10], device: &AudioDevice<impl AudioCallback>) {
         //Fetch Instruction
         let pc = self.pc as usize;
