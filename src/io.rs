@@ -3,11 +3,13 @@ use std::thread::sleep;
 use sdl2::audio::{AudioDevice, AudioStatus};
 use sdl2::EventPump;
 
+use std::convert::TryInto;
+
 use display::{Display, WindowDisplay};
 use audio::{setup_square_audio, SquareWave};
 use constants::{W, H, N, PIXEL_SIZE};
 use command::{CommandInterface, CommandInterpreter, Command, 
-    DisplayCommand, AudioCommand};
+    DisplayCommand::{*, self}, AudioCommand};
 
 const SCREEN_FPS: u32 = 10;
 const FRAME_CYCLE: u32 = 120;
@@ -30,6 +32,11 @@ impl IO {
             audio_device: setup_square_audio(&sdl_context),
             commands: CommandInterface::new()
         }
+    }
+
+    pub fn emulate_cycle(&mut self) {
+        self.commands.output_stack.push(Command::Display(
+            SendPixels(self.display.get_pixels().try_into().unwrap())))
     }
 
     pub fn sleep_frame() {

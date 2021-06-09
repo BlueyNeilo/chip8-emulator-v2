@@ -8,7 +8,7 @@ pub trait Display<T> {
     fn draw_pixels(&mut self);
     fn reset_screen(&mut self);
     fn update_pixels(&mut self, &[T]);
-    fn get_pixels(&self) -> Vec<T>;
+    fn get_pixels(&self) -> &[T];
 }
 
 pub struct WindowDisplay<const W: usize, 
@@ -80,10 +80,10 @@ Display<bool> for WindowDisplay<W, H, N, PIXEL_SIZE> {
     
     fn update_pixels(&mut self, pixels: &[bool]) {
         assert_eq!(pixels.len(), N);
-        (1..N).for_each(|i| self.pixels[i] = pixels[i])
+        self.pixels.copy_from_slice(pixels)
     }
 
-    fn get_pixels(&self) -> Vec<bool> {
-        self.pixels.to_vec()
+    fn get_pixels(&self) -> &[bool] {
+        &self.pixels
     }
 }

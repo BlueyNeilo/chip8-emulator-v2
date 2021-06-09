@@ -64,12 +64,16 @@ impl Emulator {
             IO::sleep_frame();
 
             self.io.read_commands();
-            //self.chip8.read_commands();
-            if !self.chip8.key_wait {
-                let mut pixels: [bool; N] = self.io.display.get_pixels().as_slice().try_into().unwrap();
-                self.chip8.emulate_cycle(&mut self.memory.ram, &mut pixels, &self.memory.key_state);
-                (self.io.display).update_pixels(&pixels);
-            };
+            self.io.emulate_cycle();
+            self.io.commands.output_stack.pop_all().into_iter().for_each(|c|
+                match c {
+                    Command::Display(_)
+                    | Command::Audio(_) => self.chip8.commands.input_stack.push(c),
+                    _ => {}
+                });
+            
+            self.chip8.read_commands();
+            self.chip8.emulate_cycle(&mut self.memory.ram, &self.memory.key_state);
             self.chip8.commands.output_stack.pop_all().into_iter().for_each(|c|
                 match c {
                     Command::Display(_)
