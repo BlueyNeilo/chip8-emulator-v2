@@ -1,5 +1,7 @@
 /*
-Chip8 Emulator in Rust - Patrick Neilson 2018
+Chip8 Emulator in Rust 
+
+Patrick Neilson 2021
 */
 
 extern crate sdl2;
