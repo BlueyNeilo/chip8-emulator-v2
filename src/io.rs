@@ -10,7 +10,7 @@ use std::convert::TryInto;
 use display::{Display, WindowDisplay};
 use audio::{setup_square_audio, SquareWave};
 use constants::{W, H, N, PIXEL_SIZE, KEY_VALUES};
-use command::{CommandInterface, CommandInterpreter, Command, 
+use command::{CommandRouter, CommandInterpreter, Command, 
     DisplayCommand::{*, self}, AudioCommand, KeyCommand::*, GameCommand::Exit};
 
 const SCREEN_FPS: u32 = 10;
@@ -21,7 +21,7 @@ pub struct IO {
     pub display: Box<dyn Display<bool>>,
     pub event_pump: EventPump, 
     pub audio_device: AudioDevice<SquareWave>,
-    pub commands: CommandInterface
+    pub commands: CommandRouter
 }
 
 impl IO {
@@ -32,12 +32,12 @@ impl IO {
             display: Box::new(display),
             event_pump: sdl_context.event_pump().unwrap(),
             audio_device: setup_square_audio(&sdl_context),
-            commands: CommandInterface::new()
+            commands: CommandRouter::new()
         }
     }
 
     pub fn emulate_cycle(&mut self) {
-        self.commands.output_stack.push(Command::Display(
+        self.commands.outbound_queue.push(Command::Display(
             SendPixels(self.display.get_pixels().try_into().unwrap())));
     
         self.poll_event_pump();
@@ -50,17 +50,17 @@ impl IO {
             match event {
                 Event::Quit {..} 
                 | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    self.commands.output_stack.push(Command::GameState(Exit))
+                    self.commands.outbound_queue.push(Command::GameState(Exit))
                 },
                 Event::KeyDown { keycode: Some(key), repeat: false, .. } => {
                     if let Some(key_i) = IO::get_key_index(key) {
-                        self.commands.output_stack.push(
+                        self.commands.outbound_queue.push(
                             Command::Key(KeyDownUp(key_i, true)))
                     }
                 },
                 Event::KeyUp { keycode: Some(key), repeat: false, .. } => {
                     if let Some(key_i) = IO::get_key_index(key) {
-                        self.commands.output_stack.push(
+                        self.commands.outbound_queue.push(
                             Command::Key(KeyDownUp(key_i, false)))
                     }
                 },
@@ -85,7 +85,7 @@ impl IO {
 
 impl CommandInterpreter for IO {
     fn read_commands(&mut self) {
-        self.commands.input_stack.pop_all().iter().for_each(|c| 
+        self.commands.inbound_queue.remove_all().iter().for_each(|c| 
             match c {
                 Command::Display(c) => match c {
                     DisplayCommand::SendClearDisplay => self.display.reset_screen(),

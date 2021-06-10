@@ -3,7 +3,7 @@ use byteorder::{ByteOrder, BigEndian};
 use rng::rng_byte;
 use constants::{W, H, N, ROM_ADDR, RAM_BYTES};
 use opcode::{Opcode, Operation::*, OpcodeType::{self,*}, OpcodeDisassembler};
-use command::{CommandInterface, CommandInterpreter, Command, 
+use command::{CommandRouter, CommandInterpreter, Command, 
     DisplayCommand::*, AudioCommand::*, KeyCommand::KeyDownUp, 
     MemoryCommand::SendRAM};
 
@@ -20,7 +20,7 @@ pub struct Chip8 {
     delay_timer: u8,
     sound_timer: u8,
 
-    pub commands: CommandInterface,
+    pub commands: CommandRouter,
     key_buf: [bool; 0x10],
     pixel_buf: [bool; N],
     memory_buf: [u8; RAM_BYTES]
@@ -28,7 +28,7 @@ pub struct Chip8 {
 
 impl CommandInterpreter for Chip8 {
     fn read_commands(&mut self) {
-        self.commands.input_stack.pop_all().iter().for_each(|c| 
+        self.commands.inbound_queue.remove_all().iter().for_each(|c| 
             match c {
                 Command::Display(c) => match c {
                     SendPixels(p) => self.pixel_buf.copy_from_slice(p),
@@ -65,7 +65,7 @@ impl Chip8 {
             delay_timer: 0,
             sound_timer: 0,
 
-            commands: CommandInterface::new(),
+            commands: CommandRouter::new(),
             key_buf: [false; 0x10],
             pixel_buf: [false; N],
             memory_buf: [0; RAM_BYTES],
@@ -95,19 +95,19 @@ impl Chip8 {
             if self.delay_timer > 0 { self.delay_timer -= 1 };
             if self.sound_timer > 0 {
                 self.sound_timer -= 1;
-                self.commands.output_stack.push(Command::Audio(Play));
+                self.commands.outbound_queue.push(Command::Audio(Play));
             } else {
-                self.commands.output_stack.push(Command::Audio(Pause));
+                self.commands.outbound_queue.push(Command::Audio(Pause));
             }
 
-            self.commands.output_stack.push(
+            self.commands.outbound_queue.push(
                 Command::Display(SendPixels(self.pixel_buf.clone())));
             
-            self.commands.output_stack.push(
+            self.commands.outbound_queue.push(
                 Command::Memory(SendRAM(self.memory_buf.clone())));
 
             if self.draw_flag {
-                self.commands.output_stack.push(Command::Display(SendDraw));
+                self.commands.outbound_queue.push(Command::Display(SendDraw));
                 self.draw_flag = false;
             }
         }
@@ -208,7 +208,7 @@ impl Chip8 {
     }
 
     fn clear_display(&mut self) {
-        self.commands.output_stack.push(Command::Display(SendClearDisplay));
+        self.commands.outbound_queue.push(Command::Display(SendClearDisplay));
         self.draw_flag = true
     }
 

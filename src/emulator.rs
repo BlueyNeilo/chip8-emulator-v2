@@ -37,30 +37,30 @@ impl Chip8Emulator {
         while self.running_flag {
             self.memory.read_commands();
             self.memory.emulate_cycle();
-            self.memory.commands.output_stack.pop_all().into_iter().for_each(|c| 
+            self.memory.commands.outbound_queue.remove_all().into_iter().for_each(|c| 
                 match c {
-                    Command::Memory(_) => self.chip8.commands.input_stack.push(c),
+                    Command::Memory(_) => self.chip8.commands.inbound_queue.push(c),
                     _ => {}
                 });
 
             self.io.read_commands();
             self.io.emulate_cycle();
-            self.io.commands.output_stack.pop_all().into_iter().for_each(|c|
+            self.io.commands.outbound_queue.remove_all().into_iter().for_each(|c|
                 match c {
                     Command::Display(_)
                     | Command::Audio(_)
-                    | Command::Key(_) => self.chip8.commands.input_stack.push(c),
+                    | Command::Key(_) => self.chip8.commands.inbound_queue.push(c),
                     Command::GameState(Exit) => self.running_flag = false,
                     _ => {}
                 });
             
             self.chip8.read_commands();
             self.chip8.emulate_cycle();
-            self.chip8.commands.output_stack.pop_all().into_iter().for_each(|c|
+            self.chip8.commands.outbound_queue.remove_all().into_iter().for_each(|c|
                 match c {
                     Command::Display(_)
-                    | Command::Audio(_) => self.io.commands.input_stack.push(c),
-                    Command::Memory(_) => self.memory.commands.input_stack.push(c),
+                    | Command::Audio(_) => self.io.commands.inbound_queue.push(c),
+                    Command::Memory(_) => self.memory.commands.inbound_queue.push(c),
                     _ => {}
                 });
         }

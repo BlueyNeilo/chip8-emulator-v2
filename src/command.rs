@@ -1,41 +1,65 @@
 use constants::*;
 
+#[deprecated]
 pub trait CommandInterpreter {
     fn read_commands(&mut self);
 }
 
-pub struct CommandInterface {
-    pub input_stack: CommandStack,
-    pub output_stack: CommandStack
+pub trait CommandEmulator {
+    fn get_commands(&mut self) -> CommandRouter;
+    fn process_inbound_commands(&mut self);
+    fn emulate_cycle(&mut self);
 }
 
-impl CommandInterface {
+pub struct CommandRouter {
+    // TODO: make fields private after refactor
+    pub inbound_queue: Queue<Command>,
+    pub outbound_queue: Queue<Command>
+}
+
+impl CommandRouter {
     pub fn new() -> Self {
-        CommandInterface {
-            input_stack: CommandStack::new(),
-            output_stack: CommandStack::new(),
-        }
-    }
-}
-
-pub struct CommandStack {
-    stack: Vec<Command>
-}
-
-impl CommandStack {
-    pub fn new() -> Self {
-        CommandStack {
-            stack: Vec::new()
+        CommandRouter {
+            inbound_queue: Queue::<Command>::new(),
+            outbound_queue: Queue::<Command>::new(),
         }
     }
 
-    pub fn pop_all(&mut self) -> Vec<Command> {
-        self.stack.drain(..)
+    pub fn send_inbound(&mut self, command: Command) {
+        self.inbound_queue.push(command)
+    }
+
+    pub fn send_outbound(&mut self, command: Command) {
+        self.outbound_queue.push(command)
+    }
+
+    pub fn consume_all_inbound(&mut self) -> Vec<Command> {
+        self.inbound_queue.remove_all()
+    }
+
+    pub fn consume_all_outbound(&mut self) -> Vec<Command> {
+        self.outbound_queue.remove_all()
+    }
+}
+
+pub struct Queue<T> {
+    queue: Vec<T>
+}
+
+impl <T> Queue<T> {
+    pub fn new() -> Self {
+        Queue {
+            queue: Vec::new()
+        }
+    }
+
+    pub fn remove_all(&mut self) -> Vec<T> {
+        self.queue.drain(..)
             .collect()
     }
 
-    pub fn push(&mut self, sent: Command) {
-        self.stack.push(sent)
+    pub fn push(&mut self, sent: T) {
+        self.queue.push(sent)
     }
 }
 
