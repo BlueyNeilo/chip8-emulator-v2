@@ -1,10 +1,11 @@
 use byteorder::{ByteOrder, BigEndian};
 
 use rng::rng_byte;
-use constants::{W, H, N, ROM_ADDR};
+use constants::{W, H, N, ROM_ADDR, RAM_BYTES};
 use opcode::{Opcode, Operation::*, OpcodeType::{self,*}, OpcodeDisassembler};
 use command::{CommandInterface, CommandInterpreter, Command, 
-    DisplayCommand::{self, *}, AudioCommand::*, KeyCommand};
+    DisplayCommand::*, AudioCommand::*, KeyCommand::KeyDownUp, 
+    MemoryCommand::SendRAM};
 
 #[allow(non_snake_case)]
 pub struct Chip8 {
@@ -21,7 +22,8 @@ pub struct Chip8 {
     clear_display_flag: bool,
     pub commands: CommandInterface,
     key_buf: [bool; 0x10],
-    pixel_buf: [bool; N]
+    pixel_buf: [bool; N],
+    memory_buf: [u8; RAM_BYTES]
 }
 
 impl CommandInterpreter for Chip8 {
@@ -29,17 +31,20 @@ impl CommandInterpreter for Chip8 {
         self.commands.input_stack.pop_all().iter().for_each(|c| 
             match c {
                 Command::Display(c) => match c {
-                    DisplayCommand::SendPixels(p) => self.pixel_buf.copy_from_slice(p),
+                    SendPixels(p) => self.pixel_buf.copy_from_slice(p),
                     _ => {}
                 },
                 Command::Key(c) => match *c {
-                    KeyCommand::KeyDownUp(key_i, key_is_down) => {
+                    KeyDownUp(key_i, key_is_down) => {
                         self.key_buf[key_i] = key_is_down;
                         if self.key_wait && key_is_down {
                             self.key_wait=false;
                             self.V[self.reg_wait]=key_i as u8
                         }
                     }
+                },
+                Command::Memory(c) => match c {
+                    SendRAM(bytes) => self.memory_buf.copy_from_slice(bytes)
                 }
                 _ => {}
             })
@@ -63,6 +68,7 @@ impl Chip8 {
             commands: CommandInterface::new(),
             key_buf: [false; 0x10],
             pixel_buf: [false; N],
+            memory_buf: [0; RAM_BYTES],
         }
     }
 
@@ -72,18 +78,18 @@ impl Chip8 {
         self.draw_flag = true
     }
 
-    pub fn emulate_cycle(&mut self, memory: &mut [u8; 0x1000]) {
+    pub fn emulate_cycle(&mut self) {
         if !self.key_wait {
             //Fetch Instruction
             let pc = self.pc as usize;
-            let instruction: u16 = BigEndian::read_u16(&memory[pc..pc+2]);
+            let instruction: u16 = BigEndian::read_u16(&self.memory_buf[pc..pc+2]);
             self.pc += 2;
 
             //Decode Opcode
             let opcode: Opcode = OpcodeDisassembler::disassemble(instruction);
 
             //Execute Opcode
-            self.execute_opcode(opcode, memory);
+            self.execute_opcode(opcode);
 
             //Update timers and control audio beep
             if self.delay_timer > 0 { self.delay_timer -= 1 };
@@ -97,6 +103,9 @@ impl Chip8 {
             self.commands.output_stack.push(
                 Command::Display(SendPixels(self.pixel_buf.clone())));
             
+            self.commands.output_stack.push(
+                Command::Memory(SendRAM(self.memory_buf.clone())));
+            
             if self.clear_display_flag {
                 self.commands.output_stack.push(Command::Display(SendClearDisplay));
                 self.clear_display_flag = false
@@ -109,7 +118,7 @@ impl Chip8 {
         }
     }
 
-    fn execute_opcode(&mut self, opcode: Opcode, memory: &mut [u8; 0x1000]) {
+    fn execute_opcode(&mut self, opcode: Opcode) {
         match opcode {
             Opcode(CLS, NONE) => self.clear_display(),
             Opcode(RET, NONE) => self.subroutine_return(),
@@ -132,14 +141,14 @@ impl Chip8 {
                 self.I = (0x50 + (0x5 * self.V[x as usize])) as u16
             },
             Opcode(LD, B_X(x)) => { 
-                memory[self.I as usize] = self.V[x as usize] / 100;
-                memory[(self.I+1) as usize] = (self.V[x as usize] / 10) % 10;
-                memory[(self.I+2) as usize] = self.V[x as usize] % 10
+                self.memory_buf[self.I as usize] = self.V[x as usize] / 100;
+                self.memory_buf[(self.I+1) as usize] = (self.V[x as usize] / 10) % 10;
+                self.memory_buf[(self.I+2) as usize] = self.V[x as usize] % 10
             },
             Opcode(LD, RI_X(x)) => (0..x+1).for_each(|i| 
-                memory[(self.I + i) as usize] = self.V[i as usize]),
+                self.memory_buf[(self.I + i) as usize] = self.V[i as usize]),
             Opcode(LD, X_RI(x)) => (0..x+1).for_each(|i| 
-                self.V[i as usize] = memory[(self.I + i) as usize]),
+                self.V[i as usize] = self.memory_buf[(self.I + i) as usize]),
             Opcode(ADD, XNN(x, nn)) => {
                 //self.V[0xF] = ((((self.V[x as usize] as u16) + nn) & 0xFF) >> 8) as u8; 
                 self.V[x as usize] = (((self.V[x as usize] as u16) + nn) & 0xFF) as u8
@@ -182,7 +191,7 @@ impl Chip8 {
                     for ii in 0..8 {
                         while px >= W {px -= W};
                         self.update_pixel(px, py, 
-                            (((memory[(self.I + i) as usize] >> (7 - ii)) & 1) == 1) as bool);
+                            (((self.memory_buf[(self.I + i) as usize] >> (7 - ii)) & 1) == 1) as bool);
                         px+=1
                     };
                     py+=1

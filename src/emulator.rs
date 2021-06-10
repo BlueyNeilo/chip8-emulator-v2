@@ -30,10 +30,19 @@ impl Chip8Emulator {
 
     pub fn start_game(&mut self, rom_path: &str) {
         let rom_bytes = self.get_rom_bytes(rom_path);
-        self.load_rom(&rom_bytes);
+        self.memory.load_font_sprites();
+        self.memory.load_rom(&rom_bytes);
         self.disassemble_code(&rom_bytes);
 
         while self.running_flag {
+            self.memory.read_commands();
+            self.memory.emulate_cycle();
+            self.memory.commands.output_stack.pop_all().into_iter().for_each(|c| 
+                match c {
+                    Command::Memory(_) => self.chip8.commands.input_stack.push(c),
+                    _ => {}
+                });
+
             self.io.read_commands();
             self.io.emulate_cycle();
             self.io.commands.output_stack.pop_all().into_iter().for_each(|c|
@@ -46,11 +55,12 @@ impl Chip8Emulator {
                 });
             
             self.chip8.read_commands();
-            self.chip8.emulate_cycle(&mut self.memory.ram);
+            self.chip8.emulate_cycle();
             self.chip8.commands.output_stack.pop_all().into_iter().for_each(|c|
                 match c {
                     Command::Display(_)
                     | Command::Audio(_) => self.io.commands.input_stack.push(c),
+                    Command::Memory(_) => self.memory.commands.input_stack.push(c),
                     _ => {}
                 });
         }
@@ -62,14 +72,6 @@ impl Chip8Emulator {
         file.read_to_end(&mut rom_buf).unwrap();
         
         rom_buf
-    }
-
-    pub fn load_rom(&mut self, rom_bytes: &Vec<u8>) {
-        let mut addr = ROM_ADDR;
-        for byte in rom_bytes {
-            self.memory.ram[addr]=*byte;
-            addr+=1
-        }
     }
 
     pub fn disassemble_code(&mut self, rom_bytes: &Vec<u8>) {
