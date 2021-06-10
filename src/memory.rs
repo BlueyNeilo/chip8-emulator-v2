@@ -6,12 +6,12 @@ Memory map:
 */
 
 use constants::*;
-use command::{CommandRouter, CommandInterpreter, Command, 
+use command::{CommandRouter, CommandEmulator, Command, 
     MemoryCommand::SendRAM};
 
 pub struct Memory {
-    pub ram: [u8; RAM_BYTES],
-    pub commands: CommandRouter
+    ram: [u8; RAM_BYTES],
+    commands: CommandRouter
 }
 
 impl Memory {
@@ -37,22 +37,25 @@ impl Memory {
             addr += 1
         }
     }
-
-    pub fn emulate_cycle(&mut self) {
-        self.commands.outbound_queue.push(Command::Memory(
-            SendRAM(self.ram.clone())));
-    }
-
 }
 
-impl CommandInterpreter for Memory {
-    fn read_commands(&mut self) {
-        self.commands.inbound_queue.remove_all().iter().for_each(|c| 
+impl CommandEmulator for Memory {
+    fn get_commands(&mut self) -> &mut CommandRouter {
+        &mut self.commands
+    }
+
+    fn process_inbound_commands(&mut self) {
+        self.commands.consume_all_inbound().iter().for_each(|c| 
             match c {
                 Command::Memory(c) => match c {
                     SendRAM(bytes) => self.ram.copy_from_slice(bytes)
                 },
                 _ => {}
             })
+    }
+
+    fn emulate_cycle(&mut self) {
+        self.commands.send_outbound(Command::Memory(
+            SendRAM(self.ram.clone())));
     }
 }

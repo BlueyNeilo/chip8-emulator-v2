@@ -10,7 +10,7 @@ use std::convert::TryInto;
 use display::{Display, WindowDisplay};
 use audio::{setup_square_audio, SquareWave};
 use constants::{W, H, N, PIXEL_SIZE, KEY_VALUES};
-use command::{CommandRouter, CommandInterpreter, Command, 
+use command::{CommandRouter, CommandEmulator, Command, 
     DisplayCommand::{*, self}, AudioCommand, KeyCommand::*, GameCommand::Exit};
 
 const SCREEN_FPS: u32 = 10;
@@ -18,10 +18,10 @@ const FRAME_CYCLE: u32 = 120;
 const NANO_UNIT: u32 = i64::pow(10,9) as u32;
 
 pub struct IO {
-    pub display: Box<dyn Display<bool>>,
-    pub event_pump: EventPump, 
-    pub audio_device: AudioDevice<SquareWave>,
-    pub commands: CommandRouter
+    display: Box<dyn Display<bool>>,
+    event_pump: EventPump, 
+    audio_device: AudioDevice<SquareWave>,
+    commands: CommandRouter
 }
 
 impl IO {
@@ -36,31 +36,22 @@ impl IO {
         }
     }
 
-    pub fn emulate_cycle(&mut self) {
-        self.commands.outbound_queue.push(Command::Display(
-            SendPixels(self.display.get_pixels().try_into().unwrap())));
-    
-        self.poll_event_pump();
-
-        IO::sleep_frame();
-    }
-
     pub fn poll_event_pump(&mut self) {
         for event in self.event_pump.poll_iter() {
             match event {
                 Event::Quit {..} 
                 | Event::KeyDown { keycode: Some(Keycode::Escape), .. } => {
-                    self.commands.outbound_queue.push(Command::GameState(Exit))
+                    self.commands.send_outbound(Command::GameState(Exit))
                 },
                 Event::KeyDown { keycode: Some(key), repeat: false, .. } => {
                     if let Some(key_i) = IO::get_key_index(key) {
-                        self.commands.outbound_queue.push(
+                        self.commands.send_outbound(
                             Command::Key(KeyDownUp(key_i, true)))
                     }
                 },
                 Event::KeyUp { keycode: Some(key), repeat: false, .. } => {
                     if let Some(key_i) = IO::get_key_index(key) {
-                        self.commands.outbound_queue.push(
+                        self.commands.send_outbound(
                             Command::Key(KeyDownUp(key_i, false)))
                     }
                 },
@@ -83,9 +74,13 @@ impl IO {
     }
 }
 
-impl CommandInterpreter for IO {
-    fn read_commands(&mut self) {
-        self.commands.inbound_queue.remove_all().iter().for_each(|c| 
+impl CommandEmulator for IO {
+    fn get_commands(&mut self) -> &mut CommandRouter {
+        &mut self.commands
+    }
+
+    fn process_inbound_commands(&mut self) {
+        self.commands.consume_all_inbound().iter().for_each(|c| 
             match c {
                 Command::Display(c) => match c {
                     DisplayCommand::SendClearDisplay => self.display.reset_screen(),
@@ -106,5 +101,14 @@ impl CommandInterpreter for IO {
                 }
                 _ => {}
             })
+    }
+
+    fn emulate_cycle(&mut self) {
+        self.commands.send_outbound(Command::Display(
+            SendPixels(self.display.get_pixels().try_into().unwrap())));
+    
+        self.poll_event_pump();
+
+        IO::sleep_frame();
     }
 }

@@ -9,7 +9,7 @@ use chip8::Chip8;
 use io::IO;
 use constants::{ROM_ADDR};
 use opcode::OpcodeDisassembler;
-use command::{Command::{self}, CommandInterpreter, GameCommand::*};
+use command::{Command::{self}, CommandEmulator, GameCommand::*};
 
 pub struct Chip8Emulator {
     io: IO,
@@ -35,32 +35,32 @@ impl Chip8Emulator {
         self.disassemble_code(&rom_bytes);
 
         while self.running_flag {
-            self.memory.read_commands();
+            self.memory.process_inbound_commands();
             self.memory.emulate_cycle();
-            self.memory.commands.outbound_queue.remove_all().into_iter().for_each(|c| 
+            self.memory.get_commands().consume_all_outbound().into_iter().for_each(|c| 
                 match c {
-                    Command::Memory(_) => self.chip8.commands.inbound_queue.push(c),
+                    Command::Memory(_) => self.chip8.get_commands().send_inbound(c),
                     _ => {}
                 });
 
-            self.io.read_commands();
+            self.io.process_inbound_commands();
             self.io.emulate_cycle();
-            self.io.commands.outbound_queue.remove_all().into_iter().for_each(|c|
+            self.io.get_commands().consume_all_outbound().into_iter().for_each(|c|
                 match c {
                     Command::Display(_)
                     | Command::Audio(_)
-                    | Command::Key(_) => self.chip8.commands.inbound_queue.push(c),
+                    | Command::Key(_) => self.chip8.get_commands().send_inbound(c),
                     Command::GameState(Exit) => self.running_flag = false,
                     _ => {}
                 });
             
-            self.chip8.read_commands();
+            self.chip8.process_inbound_commands();
             self.chip8.emulate_cycle();
-            self.chip8.commands.outbound_queue.remove_all().into_iter().for_each(|c|
+            self.chip8.get_commands().consume_all_outbound().into_iter().for_each(|c|
                 match c {
                     Command::Display(_)
-                    | Command::Audio(_) => self.io.commands.inbound_queue.push(c),
-                    Command::Memory(_) => self.memory.commands.inbound_queue.push(c),
+                    | Command::Audio(_) => self.io.get_commands().send_inbound(c),
+                    Command::Memory(_) => self.memory.get_commands().send_inbound(c),
                     _ => {}
                 });
         }

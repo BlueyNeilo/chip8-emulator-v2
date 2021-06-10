@@ -3,7 +3,7 @@ use byteorder::{ByteOrder, BigEndian};
 use rng::rng_byte;
 use constants::{W, H, N, ROM_ADDR, RAM_BYTES};
 use opcode::{Opcode, Operation::*, OpcodeType::{self,*}, OpcodeDisassembler};
-use command::{CommandRouter, CommandInterpreter, Command, 
+use command::{CommandRouter, CommandEmulator, Command, 
     DisplayCommand::*, AudioCommand::*, KeyCommand::KeyDownUp, 
     MemoryCommand::SendRAM};
 
@@ -20,15 +20,19 @@ pub struct Chip8 {
     delay_timer: u8,
     sound_timer: u8,
 
-    pub commands: CommandRouter,
+    commands: CommandRouter,
     key_buf: [bool; 0x10],
     pixel_buf: [bool; N],
     memory_buf: [u8; RAM_BYTES]
 }
 
-impl CommandInterpreter for Chip8 {
-    fn read_commands(&mut self) {
-        self.commands.inbound_queue.remove_all().iter().for_each(|c| 
+impl CommandEmulator for Chip8 {
+    fn get_commands(&mut self) -> &mut CommandRouter {
+        &mut self.commands
+    }
+
+    fn process_inbound_commands(&mut self) {
+        self.commands.consume_all_inbound().iter().for_each(|c| 
             match c {
                 Command::Display(c) => match c {
                     SendPixels(p) => self.pixel_buf.copy_from_slice(p),
@@ -38,8 +42,8 @@ impl CommandInterpreter for Chip8 {
                     KeyDownUp(key_i, key_is_down) => {
                         self.key_buf[key_i] = key_is_down;
                         if self.key_wait && key_is_down {
-                            self.key_wait=false;
-                            self.V[self.reg_wait]=key_i as u8
+                            self.key_wait = false;
+                            self.V[self.reg_wait] = key_i as u8
                         }
                     }
                 },
@@ -48,6 +52,20 @@ impl CommandInterpreter for Chip8 {
                 }
                 _ => {}
             })
+    }
+
+    fn emulate_cycle(&mut self) {
+        if !self.key_wait {
+            let instruction: u16 = self.next_instruction();
+
+            let opcode: Opcode = OpcodeDisassembler::disassemble(instruction);
+
+            self.execute_opcode(opcode);
+
+            self.update_timers();
+            self.update_display();
+            self.update_memory();
+        }
     }
 }
 
@@ -69,47 +87,6 @@ impl Chip8 {
             key_buf: [false; 0x10],
             pixel_buf: [false; N],
             memory_buf: [0; RAM_BYTES],
-        }
-    }
-
-    fn update_pixel(&mut self, x: usize, y: usize, val: bool) {
-        if self.pixel_buf[y*W+x] && val {self.V[0xF]=1};
-        self.pixel_buf[y*W+x] ^= val;
-        self.draw_flag = true
-    }
-
-    pub fn emulate_cycle(&mut self) {
-        if !self.key_wait {
-            //Fetch Instruction
-            let pc = self.pc as usize;
-            let instruction: u16 = BigEndian::read_u16(&self.memory_buf[pc..pc+2]);
-            self.pc += 2;
-
-            //Decode Opcode
-            let opcode: Opcode = OpcodeDisassembler::disassemble(instruction);
-
-            //Execute Opcode
-            self.execute_opcode(opcode);
-
-            //Update timers and control audio beep
-            if self.delay_timer > 0 { self.delay_timer -= 1 };
-            if self.sound_timer > 0 {
-                self.sound_timer -= 1;
-                self.commands.outbound_queue.push(Command::Audio(Play));
-            } else {
-                self.commands.outbound_queue.push(Command::Audio(Pause));
-            }
-
-            self.commands.outbound_queue.push(
-                Command::Display(SendPixels(self.pixel_buf.clone())));
-            
-            self.commands.outbound_queue.push(
-                Command::Memory(SendRAM(self.memory_buf.clone())));
-
-            if self.draw_flag {
-                self.commands.outbound_queue.push(Command::Display(SendDraw));
-                self.draw_flag = false;
-            }
         }
     }
 
@@ -187,9 +164,9 @@ impl Chip8 {
                         while px >= W {px -= W};
                         self.update_pixel(px, py, 
                             (((self.memory_buf[(self.I + i) as usize] >> (7 - ii)) & 1) == 1) as bool);
-                        px+=1
+                        px += 1
                     };
-                    py+=1
+                    py += 1
                 };
             },
             Opcode(SKP, X(x)) => self.skip(self.key_buf[(self.V[x as usize] & 0xF) as usize]),
@@ -197,6 +174,46 @@ impl Chip8 {
             Opcode(UNDEFINED, ..) => unimplemented!("Undefined opcode behaviour encountered in program."),
             _ => unimplemented!("This opcode is not implemented in this chip8 emulator. Opcode: {:?}", opcode)
         }
+    }
+
+    fn next_instruction(&mut self) -> u16 {
+        let pc = self.pc as usize;
+        let instruction: u16 = BigEndian::read_u16(&self.memory_buf[pc..(pc + 2)]);
+        self.pc += 2;
+
+        instruction
+    }
+
+    fn update_timers(&mut self) {
+        if self.delay_timer > 0 { self.delay_timer -= 1 };
+
+        if self.sound_timer > 0 {
+            self.sound_timer -= 1;
+            self.commands.send_outbound(Command::Audio(Play))
+        } else {
+            self.commands.send_outbound(Command::Audio(Pause))
+        }
+    }
+
+    fn update_display(&mut self) {
+        self.commands.send_outbound(
+            Command::Display(SendPixels(self.pixel_buf.clone())));
+
+        if self.draw_flag {
+            self.commands.send_outbound(Command::Display(SendDraw));
+            self.draw_flag = false
+        }
+    }
+
+    fn update_memory(&mut self) {
+        self.commands.send_outbound(
+            Command::Memory(SendRAM(self.memory_buf.clone())))
+    }
+
+    fn update_pixel(&mut self, x: usize, y: usize, val: bool) {
+        if self.pixel_buf[y * W + x] && val { self.V[0xF] = 1 };
+        self.pixel_buf[y * W + x] ^= val;
+        self.draw_flag = true
     }
 
     fn get_tuple_from_type(&self, op_type: OpcodeType) -> Option<(u16, u16)> {
@@ -208,7 +225,7 @@ impl Chip8 {
     }
 
     fn clear_display(&mut self) {
-        self.commands.outbound_queue.push(Command::Display(SendClearDisplay));
+        self.commands.send_outbound(Command::Display(SendClearDisplay));
         self.draw_flag = true
     }
 
@@ -233,13 +250,13 @@ impl Chip8 {
 
     fn skip_equal(&mut self, op_type: OpcodeType) {
         if let Some((left, right)) = self.get_tuple_from_type(op_type) {
-            self.skip(left==right)
+            self.skip(left == right)
         }
     }
 
     fn skip_not_equal(&mut self, op_type: OpcodeType) {
         if let Some((left, right)) = self.get_tuple_from_type(op_type) {
-            self.skip(left!=right)
+            self.skip(left != right)
         }
     }
 }

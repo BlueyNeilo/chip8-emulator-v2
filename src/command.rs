@@ -1,20 +1,14 @@
 use constants::*;
 
-#[deprecated]
-pub trait CommandInterpreter {
-    fn read_commands(&mut self);
-}
-
 pub trait CommandEmulator {
-    fn get_commands(&mut self) -> CommandRouter;
+    fn get_commands(&mut self) -> &mut CommandRouter;
     fn process_inbound_commands(&mut self);
     fn emulate_cycle(&mut self);
 }
 
 pub struct CommandRouter {
-    // TODO: make fields private after refactor
-    pub inbound_queue: Queue<Command>,
-    pub outbound_queue: Queue<Command>
+    inbound_queue: Queue<Command>,
+    outbound_queue: Queue<Command>
 }
 
 impl CommandRouter {
