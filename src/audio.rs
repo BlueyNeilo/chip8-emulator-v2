@@ -34,7 +34,8 @@ pub fn setup_square_audio(sdl_context: &Sdl) -> AudioDevice<SquareWave> {
     )
 }
 
-fn setup_audio<T: AudioCallback, F: FnOnce(AudioSpec) -> T>(sdl_context: &Sdl, callback: F) -> AudioDevice<T> {
+fn setup_audio<T: AudioCallback, F: FnOnce(AudioSpec) -> T>(
+        sdl_context: &Sdl, callback: F) -> AudioDevice<T> {
     let audio_subsystem = sdl_context.audio().unwrap();
     let desired_spec = AudioSpecDesired {
         freq: Some(DSP_FREQ),
@@ -42,7 +43,8 @@ fn setup_audio<T: AudioCallback, F: FnOnce(AudioSpec) -> T>(sdl_context: &Sdl, c
         samples: None
     };
     
-    let audio_device = audio_subsystem.open_playback(None, 
+    let audio_device = audio_subsystem.open_playback(
+        None, 
         &desired_spec,
         callback
     ).unwrap();
