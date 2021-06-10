@@ -31,27 +31,26 @@ impl CommandEmulator for Chip8 {
         &mut self.commands
     }
 
-    fn process_inbound_commands(&mut self) {
-        self.commands.consume_all_inbound().iter().for_each(|c| 
-            match c {
-                Command::Display(c) => match c {
-                    SendPixels(p) => self.pixel_buf.copy_from_slice(p),
-                    _ => {}
-                },
-                Command::Key(c) => match *c {
-                    KeyDownUp(key_i, key_is_down) => {
-                        self.key_buf[key_i] = key_is_down;
-                        if self.key_wait && key_is_down {
-                            self.key_wait = false;
-                            self.V[self.reg_wait] = key_i as u8
-                        }
-                    }
-                },
-                Command::Memory(c) => match c {
-                    SendRAM(bytes) => self.memory_buf.copy_from_slice(bytes)
-                }
+    fn process_inbound_command(&mut self, command: &Command) { 
+        match command {
+            Command::Display(c) => match c {
+                SendPixels(p) => self.pixel_buf.copy_from_slice(p),
                 _ => {}
-            })
+            },
+            Command::Key(c) => match *c {
+                KeyDownUp(key_i, key_is_down) => {
+                    self.key_buf[key_i] = key_is_down;
+                    if self.key_wait && key_is_down {
+                        self.key_wait = false;
+                        self.V[self.reg_wait] = key_i as u8
+                    }
+                }
+            },
+            Command::Memory(c) => match c {
+                SendRAM(bytes) => self.memory_buf.copy_from_slice(bytes)
+            }
+            _ => {}
+        }
     }
 
     fn emulate_cycle(&mut self) {

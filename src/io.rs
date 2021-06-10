@@ -79,28 +79,27 @@ impl CommandEmulator for IO {
         &mut self.commands
     }
 
-    fn process_inbound_commands(&mut self) {
-        self.commands.consume_all_inbound().iter().for_each(|c| 
-            match c {
-                Command::Display(c) => match c {
-                    DisplayCommand::SendClearDisplay => self.display.reset_screen(),
-                    DisplayCommand::SendDraw => self.display.draw_pixels(),
-                    DisplayCommand::SendPixels(p) => self.display.update_pixels(p)
+    fn process_inbound_command(&mut self, command: &Command) {
+        match command {
+            Command::Display(c) => match c {
+                DisplayCommand::SendClearDisplay => self.display.reset_screen(),
+                DisplayCommand::SendDraw => self.display.draw_pixels(),
+                DisplayCommand::SendPixels(p) => self.display.update_pixels(p)
+            },
+            Command::Audio(c) => match c {
+                AudioCommand::Play => {
+                    if self.audio_device.status()==AudioStatus::Paused {
+                        self.audio_device.resume();
+                    }
                 },
-                Command::Audio(c) => match c {
-                    AudioCommand::Play => {
-                        if self.audio_device.status()==AudioStatus::Paused {
-                            self.audio_device.resume();
-                        }
-                    },
-                    AudioCommand::Pause => {
-                        if self.audio_device.status()==AudioStatus::Playing {
-                            self.audio_device.pause();
-                        }
+                AudioCommand::Pause => {
+                    if self.audio_device.status()==AudioStatus::Playing {
+                        self.audio_device.pause();
                     }
                 }
-                _ => {}
-            })
+            }
+            _ => {}
+        }
     }
 
     fn emulate_cycle(&mut self) {

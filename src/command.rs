@@ -2,7 +2,16 @@ use constants::*;
 
 pub trait CommandEmulator {
     fn get_commands(&mut self) -> &mut CommandRouter;
-    fn process_inbound_commands(&mut self);
+
+    fn process_inbound_command(&mut self, &Command);
+    
+    fn process_inbound_commands(&mut self) {
+        self.get_commands()
+            .consume_all_inbound()
+            .iter()
+            .for_each(|c| self.process_inbound_command(c))
+    }
+    
     fn emulate_cycle(&mut self);
 }
 

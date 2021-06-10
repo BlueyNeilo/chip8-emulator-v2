@@ -44,14 +44,13 @@ impl CommandEmulator for Memory {
         &mut self.commands
     }
 
-    fn process_inbound_commands(&mut self) {
-        self.commands.consume_all_inbound().iter().for_each(|c| 
-            match c {
-                Command::Memory(c) => match c {
-                    SendRAM(bytes) => self.ram.copy_from_slice(bytes)
-                },
-                _ => {}
-            })
+    fn process_inbound_command(&mut self, command: &Command) {
+        match command {
+            Command::Memory(c) => match c {
+                SendRAM(bytes) => self.ram.copy_from_slice(bytes)
+            },
+            _ => {}
+        }
     }
 
     fn emulate_cycle(&mut self) {
