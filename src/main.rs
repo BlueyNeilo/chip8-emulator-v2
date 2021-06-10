@@ -1,5 +1,5 @@
 /*
-Chip8 Emulator in Rust 
+Chip8 Emulator in Rust v2
 
 Patrick Neilson 2021
 */
