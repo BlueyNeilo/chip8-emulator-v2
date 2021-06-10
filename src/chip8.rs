@@ -8,16 +8,16 @@ use command::{CommandInterface, CommandInterpreter, Command,
 
 #[allow(non_snake_case)]
 pub struct Chip8 {
-    draw_flag: bool, //Only draw if screen changes: 0x00E0 – Clear screen, 0xDXYN – Draw sprite
-    pub key_wait: bool, //set to true if the program is waiting for a key to be entered
-    pub reg_wait: usize, //the index of the V register the waited key value will be stored in
-    pc: u16, //Program counter
-    I: u16, //Index register
-    sp: u8, //Stack pointer
-    stack: [u16; 0x10], //The stack for return calls
-    pub V: [u8; 0x10], //16 general purpose registers V0..V15. V15 (VF) is used for the carry flag
-    delay_timer: u8, //counts down to 0 (60Hz)
-    sound_timer: u8, //counts down to 0 (60Hz). system's buzzer sounds whenever the timer reaches 0.
+    draw_flag: bool,
+    pub key_wait: bool,
+    pub reg_wait: usize,
+    pc: u16,
+    I: u16,
+    sp: u8,
+    stack: [u16; 0x10],
+    pub V: [u8; 0x10],
+    delay_timer: u8,
+    sound_timer: u8,
     clear_display_flag: bool,
     pub commands: CommandInterface,
     key_buf: [bool; 0x10],
