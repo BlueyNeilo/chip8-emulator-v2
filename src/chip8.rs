@@ -10,16 +10,16 @@ use command::{CommandInterface, CommandInterpreter, Command,
 #[allow(non_snake_case)]
 pub struct Chip8 {
     draw_flag: bool,
-    pub key_wait: bool,
-    pub reg_wait: usize,
+    key_wait: bool,
+    reg_wait: usize,
     pc: u16,
     I: u16,
     sp: u8,
     stack: [u16; 0x10],
-    pub V: [u8; 0x10],
+    V: [u8; 0x10],
     delay_timer: u8,
     sound_timer: u8,
-    clear_display_flag: bool,
+
     pub commands: CommandInterface,
     key_buf: [bool; 0x10],
     pixel_buf: [bool; N],
@@ -64,7 +64,7 @@ impl Chip8 {
             V: [0; 0x10],
             delay_timer: 0,
             sound_timer: 0,
-            clear_display_flag: false,
+
             commands: CommandInterface::new(),
             key_buf: [false; 0x10],
             pixel_buf: [false; N],
@@ -105,11 +105,6 @@ impl Chip8 {
             
             self.commands.output_stack.push(
                 Command::Memory(SendRAM(self.memory_buf.clone())));
-            
-            if self.clear_display_flag {
-                self.commands.output_stack.push(Command::Display(SendClearDisplay));
-                self.clear_display_flag = false
-            }
 
             if self.draw_flag {
                 self.commands.output_stack.push(Command::Display(SendDraw));
@@ -213,7 +208,7 @@ impl Chip8 {
     }
 
     fn clear_display(&mut self) {
-        self.clear_display_flag = true; 
+        self.commands.output_stack.push(Command::Display(SendClearDisplay));
         self.draw_flag = true
     }
 
