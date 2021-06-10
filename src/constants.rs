@@ -1,6 +1,13 @@
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
 
+/*
+Graphics
+64x32 pixels
+monochrome colour
+graphics are drawn only with sprites
+(sprites are 8 pixels wide, may be from 1 to 15 pixels in height)
+*/
 pub const W: usize = 64;
 pub const H: usize = 32;
 pub const N: usize = W * H;
