@@ -48,7 +48,7 @@ pub enum Command {
 }
 
 pub enum MemoryCommand {
-    SendMemory([u8; N])
+    SendRAM([u8; RAM_BYTES])
 }
 
 pub enum AudioCommand {
