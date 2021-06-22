@@ -19,6 +19,7 @@ mod rng;
 mod opcode;
 mod emulator;
 mod command;
+mod router;
 
 use rom_menu::choose_rom;
 use emulator::Chip8Emulator;

@@ -3,9 +3,10 @@ use byteorder::{ByteOrder, BigEndian};
 use rng::rng_byte;
 use constants::{W, H, N, ROM_ADDR, RAM_BYTES};
 use opcode::{Opcode, Operation::*, OpcodeType::{self,*}, OpcodeDisassembler};
-use command::{CommandRouter, CommandEmulator, Command, 
+use command::{CommandEmulator, Command, 
     DisplayCommand::*, AudioCommand::*, KeyCommand::KeyDownUp, 
     MemoryCommand::SendRAM};
+use router::Router;
 
 #[allow(non_snake_case)]
 pub struct Chip8 {
@@ -20,14 +21,14 @@ pub struct Chip8 {
     delay_timer: u8,
     sound_timer: u8,
 
-    commands: CommandRouter,
+    commands: Router<Command>,
     key_buf: [bool; 0x10],
     pixel_buf: [bool; N],
     memory_buf: [u8; RAM_BYTES]
 }
 
 impl CommandEmulator for Chip8 {
-    fn get_commands(&mut self) -> &mut CommandRouter {
+    fn get_commands(&mut self) -> &mut Router<Command> {
         &mut self.commands
     }
 
@@ -82,7 +83,7 @@ impl Chip8 {
             delay_timer: 0,
             sound_timer: 0,
 
-            commands: CommandRouter::new(),
+            commands: Router::<Command>::new(),
             key_buf: [false; 0x10],
             pixel_buf: [false; N],
             memory_buf: [0; RAM_BYTES],

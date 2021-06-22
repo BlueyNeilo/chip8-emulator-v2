@@ -10,8 +10,9 @@ use std::convert::TryInto;
 use display::{Display, WindowDisplay};
 use audio::{setup_square_audio, SquareWave};
 use constants::{W, H, N, PIXEL_SIZE, KEY_VALUES};
-use command::{CommandRouter, CommandEmulator, Command, 
+use command::{CommandEmulator, Command, 
     DisplayCommand::{*, self}, AudioCommand, KeyCommand::*, GameCommand::Exit};
+use router::Router;
 
 const SCREEN_FPS: u32 = 10;
 const FRAME_CYCLE: u32 = 120;
@@ -21,7 +22,7 @@ pub struct IO {
     display: Box<dyn Display<bool>>,
     event_pump: EventPump, 
     audio_device: AudioDevice<SquareWave>,
-    commands: CommandRouter
+    commands: Router<Command>
 }
 
 impl IO {
@@ -32,7 +33,7 @@ impl IO {
             display: Box::new(display),
             event_pump: sdl_context.event_pump().unwrap(),
             audio_device: setup_square_audio(&sdl_context),
-            commands: CommandRouter::new()
+            commands: Router::<Command>::new()
         }
     }
 
@@ -75,7 +76,7 @@ impl IO {
 }
 
 impl CommandEmulator for IO {
-    fn get_commands(&mut self) -> &mut CommandRouter {
+    fn get_commands(&mut self) -> &mut Router<Command> {
         &mut self.commands
     }
 

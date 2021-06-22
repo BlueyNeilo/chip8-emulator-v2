@@ -6,19 +6,20 @@ Memory map:
 */
 
 use constants::*;
-use command::{CommandRouter, CommandEmulator, Command, 
+use command::{CommandEmulator, Command, 
     MemoryCommand::SendRAM};
+use router::Router;
 
 pub struct Memory {
     ram: [u8; RAM_BYTES],
-    commands: CommandRouter
+    commands: Router<Command>
 }
 
 impl Memory {
     pub fn new() -> Self {
         Memory {
             ram: [0; RAM_BYTES],
-            commands: CommandRouter::new()
+            commands: Router::<Command>::new()
         }
     }
 
@@ -40,7 +41,7 @@ impl Memory {
 }
 
 impl CommandEmulator for Memory {
-    fn get_commands(&mut self) -> &mut CommandRouter {
+    fn get_commands(&mut self) -> &mut Router<Command> {
         &mut self.commands
     }
 
